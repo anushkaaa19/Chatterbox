@@ -150,20 +150,21 @@ export const updateProfile = async (req, res) => {
             }
         });
 
-    } catch (error) {
+    }catch (error) {
         console.error("Error in updateProfile controller:", error);
         
-        // Handle specific Cloudinary errors
-        if (error.message.includes("File size too large")) {
+        // Handle errors safely (check if error.message exists)
+        const errorMessage = error.message || "Failed to upload image";
+        
+        if (errorMessage.includes("File size too large")) {
             return res.status(413).json({ message: "File size too large" });
         }
         
-        // Handle invalid file type errors
-        if (error.message.includes("Invalid image file")) {
+        if (errorMessage.includes("Invalid image file")) {
             return res.status(415).json({ message: "Invalid file type" });
         }
-
-        res.status(500).json({ message: "Internal server error" });
+    
+        res.status(500).json({ message: errorMessage });
     }
 };
 export const checkAuth = (req, res) => {
