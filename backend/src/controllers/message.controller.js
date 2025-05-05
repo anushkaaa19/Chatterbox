@@ -1,5 +1,7 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js"
+import cloudinary from "../lib/cloudinary.js"
+import { getReceiverSocketId,io } from "../lib/socket.js";
 
 export const getUsersForSidebar = async (req, res) => {
     try {
@@ -64,63 +66,59 @@ export const getMessages = async (req, res) => {
         });
     }
 };
-
 export const sendMessages = async (req, res) => {
     try {
-        const { text,image } = req.body;
-        const { id: receiverId } = req.params;
-        const senderId = req.user._id; // Fixed from req.user_id to req.user._id
-
-        // Validate required fields
-        
-        let imageUrl;
-        // Handle image upload if provided
-        if (image) {
-            const uploadResponse = await cloudinary.uploader.upload(req.body.image, {
-                folder: "message_images",
-                resource_type: "auto"
-            });
-            imageUrl = uploadResponse.secure_url;
+      const { text, image } = req.body;
+      const { id: receiverId } = req.params;
+      const senderId = req.user._id;
+  
+      // Validate receiver
+      if (!receiverId) {
+        return res.status(400).json({ success: false, message: "Receiver ID required" });
+      }
+  
+      // Upload image if present
+      let imageUrl;
+      if (image) {
+        const uploadResponse = await cloudinary.uploader.upload(image, {
+          folder: "message_images",
+          resource_type: "auto"
+        });
+        imageUrl = uploadResponse.secure_url;
+      }
+  
+      // Create and save
+      const newMessage = new Message({
+        senderId,
+        receiverId,
+        text: text || "",
+        image: imageUrl
+      });
+      await newMessage.save();
+  
+      // Emit to the other user if they're online
+      const receiverSocketId = getReceiverSocketId(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newMessage", newMessage);
+      }
+  
+      // Respond
+      res.status(201).json({
+        success: true,
+        message: {
+          _id: newMessage._id,
+          senderId,
+          receiverId,
+          text: newMessage.text,
+          image: newMessage.image,
+          createdAt: newMessage.createdAt
         }
-
-        // Create new message
-        const newMessage = new Message({
-            senderId,
-            receiverId,
-            text: text || "", // Handle case where only image is sent
-            image: imageUrl || undefined // Only include if image exists
-        });
-
-        await newMessage.save();
-
-        // Return the created message
-        res.status(201).json({
-            success: true,
-            message: {
-                _id: newMessage._id,
-                senderId: newMessage.senderId,
-                receiverId: newMessage.receiverId,
-                text: newMessage.text,
-                image: newMessage.image,
-                createdAt: newMessage.createdAt
-            }
-        });
-
+      });
     } catch (error) {
-        console.error("Error in sendMessage controller:", error.message);
-        
-        // Handle specific Cloudinary errors
-        if (error.message.includes("File size too large")) {
-            return res.status(413).json({ 
-                success: false,
-                message: "Image file size too large" 
-            });
-        }
-        
-        res.status(500).json({ 
-            success: false,
-            message: "Failed to send message",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+      console.error("Error in sendMessages controller:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error"
+      });
     }
 };

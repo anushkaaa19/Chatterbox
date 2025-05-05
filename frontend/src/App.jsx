@@ -5,10 +5,13 @@ import SignUpPage from "./pages/SignupPage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
+import LearnPage from "./pages/LearnPage";
+import DemoPage from "./pages/DemoPage";
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
+import Home from "./pages/Home";
 import { useEffect } from "react";
 
 import { Loader } from "lucide-react";
@@ -38,10 +41,12 @@ const App = () => {
       <Navbar />
 
       <Routes>
-        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
+        <Route path="/" element={authUser ? <HomePage /> : <Home/>} />
         <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
         <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/learn" element={<LearnPage />} />
+        <Route path="/demo" element={<DemoPage />} />
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
       </Routes>
 
