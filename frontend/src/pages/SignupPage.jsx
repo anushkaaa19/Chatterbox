@@ -3,7 +3,7 @@ import { Eye, EyeOff,User, Mail, Lock, MessageSquare } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import AuthImagePattern from "../components/AuthImagePattern"
 import { toast } from 'react-hot-toast';
-
+import GoogleSignIn from "../components/GoogleSignIn";
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -154,6 +154,7 @@ const SignUpPage = () => {
                   "Sign Up"
                 )}
               </button>
+              <GoogleSignIn/>
             </div>
           </form>
 

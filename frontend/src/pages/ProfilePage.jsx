@@ -99,9 +99,11 @@ const ProfilePage = () => {
               <div className="flex items-center justify-between py-2 border-b border-base-300">
                 <span className="text-base-content/70">Member Since</span>
                 <span className="text-base-content">
-                  {authUser.createdAt ?.split("T")[0]}
-
-                </span>
+                {authUser?.createdAt ? (
+  typeof authUser.createdAt === 'string' ? 
+    new Date(authUser.createdAt).toLocaleDateString() :
+    new Date(authUser.createdAt).toLocaleDateString()
+) : "N/A"}                </span>
               </div>
 
               {/* Account Status */}

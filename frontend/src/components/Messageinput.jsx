@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
-import  axios from "axios";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -32,30 +31,19 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
-  
+
     try {
-      let imageUrl = null;
-      
-      // If image preview exists, upload to Cloudinary first
-      if (imagePreview) {
-        const uploadResponse = await axios.post('/api/upload', { 
-          image: imagePreview 
-        });
-        imageUrl = uploadResponse.data.url;
-      }
-  
       await sendMessage({
         text: text.trim(),
-        image: imageUrl // Send the Cloudinary URL instead of base64
+        image: imagePreview,
       });
-  
+
+      // Clear form
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      
     } catch (error) {
       console.error("Failed to send message:", error);
-      toast.error(error.response?.data?.message || "Failed to send message");
     }
   };
 

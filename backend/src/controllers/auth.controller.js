@@ -46,7 +46,9 @@ export const signup = async (req, res) => {
                 id: newUser._id,
                 fullName: newUser.fullName,
                 email: newUser.email,
-                profilePic: newUser.profilePic
+                profilePic: newUser.profilePic,
+                createdAt:newUser.createdAt, // Make sure this is included
+
             }
         });
 
@@ -192,3 +194,42 @@ export const checkAuth = (req, res) => {
         });
     }
 };
+// In auth.controller.js
+export const googleAuth = async (req, res) => {
+    const { uid, email, displayName, photoURL } = req.body;
+    
+    try {
+      let user = await User.findOne({ 
+        $or: [
+          { firebaseUid: uid },
+          { email }
+        ]
+      });
+  
+      if (!user) {
+        user = new User({
+          firebaseUid: uid,
+          fullName: displayName,
+          email,
+          profilePic: photoURL,
+          password: "google-auth-no-password" // Mark as Google-authenticated
+        });
+        await user.save();
+      }
+  
+      // Use your EXISTING JWT system
+      generateToken(user._id, res);
+  
+      res.status(200).json({
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        profilePic: user.profilePic,
+        createdAt: user.createdAt, // Make sure this is included
+        // ... other fields
+      });
+    } catch (error) {
+      console.error("Google auth error:", error);
+      res.status(500).json({ message: "Authentication failed" });
+    }
+  };

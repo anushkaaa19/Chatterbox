@@ -19,6 +19,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true // Allows null values while maintaining uniqueness
+    },
+    bio: {
+      type: String,
+      default: "",
+      maxlength: 150 // WhatsApp-like character limit
+    }
   },
   {
     timestamps: true, // This adds createdAt and updatedAt fields

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { Mail, Lock, Eye, EyeOff, Loader2, MessageSquare } from "lucide-react";
 import AuthImagePattern from "../components/AuthImagePattern";
+import GoogleSignIn from "../components/GoogleSignIn"
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -101,6 +102,7 @@ const LoginPage = () => {
                 "Sign in"
               )}
             </button>
+            <GoogleSignIn/>
           </form>
 
           {/* Signup Link */}
