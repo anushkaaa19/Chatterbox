@@ -1,235 +1,328 @@
-// Use these imports at the top of your file
 import User from "../models/user.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../lib/utils.js";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
+// Forgot password: send OTP email
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+
+    user.otp = { code: otp, expiresAt };
+    await user.save();
+
+    // Nodemailer config
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.MAIL_USER,
+      to: user.email,
+      subject: "Password Reset OTP",
+      text: `Your OTP for password reset is ${otp}. It will expire in 5 minutes.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ message: "OTP sent to email" });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+};
+
+// Verify OTP and generate temp reset token
+export const verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user || !user.otp) {
+      return res.status(400).json({ message: "OTP expired or not found" });
+    }
+
+    if (user.otp.code !== otp || user.otp.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // Clear OTP and create resetToken
+    user.otp = undefined;
+    const tempToken = crypto.randomBytes(20).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+    user.resetToken = { token: tempToken, expiresAt };
+    await user.save();
+
+    res.json({ success: true, message: "OTP verified", tempToken });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ message: "OTP verification failed" });
+  }
+};
+
+// Reset password
+export const resetPassword = async (req, res) => {
+  const { email, newPassword, token } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user || !user.resetToken) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    if (
+      user.resetToken.token !== token ||
+      user.resetToken.expiresAt < new Date()
+    ) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    user.password = hashedPassword;
+    user.resetToken = undefined;
+
+    await user.save();
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Failed to reset password" });
+  }
+};
+
+// Signup controller
 export const signup = async (req, res) => {
-    const { fullName, email, password } = req.body;
-    try {
-        // Validate required fields
-        if (!fullName || !email || !password) {
-            return res.status(400).json({ message: "All fields are required" });
-        }
+  const { fullName, email, password } = req.body;
 
-        // Validate password length
-        if (password.length < 6) {
-            return res.status(400).json({ message: "Password must be at least 6 characters" });
-        }
-
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: "Email already exists" });
-        }
-
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // Create new user
-        const newUser = new User({
-            fullName,
-            email,
-            password: hashedPassword,
-            profilePic: req.body.profilePic || "" // Add profilePic if provided
-        });
-
-        // Save user and generate token
-        await newUser.save();
-        generateToken(newUser._id, res);
-
-        // Return success response
-        res.status(201).json({
-            message: "User created successfully",
-            user: {
-                id: newUser._id,
-                fullName: newUser.fullName,
-                email: newUser.email,
-                profilePic: newUser.profilePic,
-                createdAt:newUser.createdAt, // Make sure this is included
-
-            }
-        });
-
-    } catch (error) {
-        console.error("Error in signup controller:", error);
-        res.status(500).json({ message: "Internal server error", error: error.message });
+  try {
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
     }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new User({
+      fullName,
+      email,
+      password: hashedPassword,
+      profilePic: req.body.profilePic || "",
+    });
+
+    await newUser.save();
+
+    // Generate JWT token
+    const token = generateToken(newUser._id);
+
+    // Set cookie
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
+      domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
+    });
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        id: newUser._id,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        profilePic: newUser.profilePic,
+        createdAt: newUser.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error in signup controller:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
 };
 
+// Login controller
 export const login = async (req, res) => {
-    const { email, password } = req.body;
-    try {
-        // Check if email and password are provided
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required" });
-        }
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-        // Find user by email
-        const user = await User.findOne({ email });
+    const isMatch = await bcrypt.compare(req.body.password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
-        if (!user) {
-            return res.status(401).json({ message: "Invalid credentials" }); // Changed from 480 to standard 401
-        }
+    const token = generateToken(user._id);
 
-        // Compare passwords
-        const isPasswordCorrect = await bcrypt.compare(password, user.password);
-        if (!isPasswordCorrect) {
-            return res.status(401).json({ message: "Invalid credentials" }); // Changed from 480 to standard 401
-        }
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
+      domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
+    });
 
-        // Generate JWT token
-        generateToken(user._id, res);
-
-        // Return user data
-        res.status(200).json({
-            _id: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            profilePic: user.profilePic,
-            createdAt: user.createdAt, // Added if you have timestamps
-            updatedAt: user.updatedAt  // Added if you have timestamps
-        });
-
-    } catch (error) {
-        console.error("Error in login controller:", error.message);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
+    res.status(200).json({ message: "Logged in successfully", user: { id: user._id, email: user.email } });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
 
+// Logout controller
 export const logout = (req, res) => {
-    try {
-        res.cookie("jwt", "", { 
-            maxAge: 0,
-            httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV !== "development"
-        });
-        res.status(200).json({ message: "Logged out successfully" });
-    } catch (error) {
-        console.error("Error in logout controller:", error.message);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
+  try {
+    res.cookie("jwt", "", {
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Error in logout controller:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
+
+// Update profile picture controller
 export const updateProfile = async (req, res) => {
-    try {
-        const { profilePic } = req.body;
-        const userId = req.user._id;
+  try {
+    const { profilePic } = req.body;
+    const userId = req.user._id;
 
-        // Validate input
-        if (!profilePic) {
-            return res.status(400).json({ message: "Profile picture is required" });
-        }
-
-        // Upload to Cloudinary
-        const uploadResponse = await cloudinary.uploader.upload(profilePic, {
-            folder: "profile-pictures",
-            resource_type: "auto"
-        });
-
-        // Update user in database
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { profilePic: uploadResponse.secure_url },
-            { new: true, select: "-password" } // Return updated user without password
-        );
-
-        if (!updatedUser) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        // Return updated user data
-        res.status(200).json({
-            message: "Profile updated successfully",
-            user: {
-                _id: updatedUser._id,
-                fullName: updatedUser.fullName,
-                email: updatedUser.email,
-                profilePic: updatedUser.profilePic,
-                createdAt: updatedUser.createdAt,
-                updatedAt: updatedUser.updatedAt
-            }
-        });
-
-    }catch (error) {
-        console.error("Error in updateProfile controller:", error);
-        
-        // Handle errors safely (check if error.message exists)
-        const errorMessage = error.message || "Failed to upload image";
-        
-        if (errorMessage.includes("File size too large")) {
-            return res.status(413).json({ message: "File size too large" });
-        }
-        
-        if (errorMessage.includes("Invalid image file")) {
-            return res.status(415).json({ message: "Invalid file type" });
-        }
-    
-        res.status(500).json({ message: errorMessage });
+    if (!profilePic) {
+      return res.status(400).json({ message: "Profile picture is required" });
     }
+
+    const uploadResponse = await cloudinary.uploader.upload(profilePic, {
+      folder: "profile-pictures",
+      resource_type: "auto",
+    });
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePic: uploadResponse.secure_url },
+      { new: true, select: "-password" }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        _id: updatedUser._id,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        profilePic: updatedUser.profilePic,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error in updateProfile controller:", error);
+
+    const errorMessage = error.message || "Failed to upload image";
+
+    if (errorMessage.includes("File size too large")) {
+      return res.status(413).json({ message: "File size too large" });
+    }
+
+    if (errorMessage.includes("Invalid image file")) {
+      return res.status(415).json({ message: "Invalid file type" });
+    }
+
+    res.status(500).json({ message: errorMessage });
+  }
 };
+
+// Check auth (returns user data if logged in)
 export const checkAuth = (req, res) => {
-    try {
-        // Check if user exists in request (added validation)
-        if (!req.user) {
-            return res.status(401).json({ message: "Not authenticated" });
-        }
+  try {
+    if (!req.user) {
+      return res.status(200).json(null);
+    }
 
-        // Return user data without sensitive information
-        res.status(200).json({
-            _id: req.user._id,
-            fullName: req.user.fullName,
-            email: req.user.email,
-            profilePic: req.user.profilePic,
-            createdAt: req.user.createdAt,
-            updatedAt: req.user.updatedAt
-        });
-        
-    } catch (error) {
-        console.error("Error in checkAuth controller:", error.message);
-        res.status(500).json({ 
-            message: "Internal Server Error",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
+    res.status(200).json({
+      _id: req.user._id,
+      fullName: req.user.fullName,
+      email: req.user.email,
+      profilePic: req.user.profilePic,
+      createdAt: req.user.createdAt,
+      updatedAt: req.user.updatedAt,
+    });
+  } catch (error) {
+    console.error("Error in checkAuth controller:", error.message);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
 };
-// In auth.controller.js
+
+// Google OAuth controller
 export const googleAuth = async (req, res) => {
-    const { uid, email, displayName, photoURL } = req.body;
-    
-    try {
-      let user = await User.findOne({ 
-        $or: [
-          { firebaseUid: uid },
-          { email }
-        ]
+  const { uid, email, displayName, photoURL } = req.body;
+
+  try {
+    let user = await User.findOne({
+      $or: [{ firebaseUid: uid }, { email }],
+    });
+
+    if (!user) {
+      user = new User({
+        firebaseUid: uid,
+        fullName: displayName,
+        email,
+        profilePic: photoURL,
+        password: "google-auth-no-password", // Mark as Google-authenticated user
       });
-  
-      if (!user) {
-        user = new User({
-          firebaseUid: uid,
-          fullName: displayName,
-          email,
-          profilePic: photoURL,
-          password: "google-auth-no-password" // Mark as Google-authenticated
-        });
-        await user.save();
-      }
-  
-      // Use your EXISTING JWT system
-      generateToken(user._id, res);
-  
-      res.status(200).json({
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        profilePic: user.profilePic,
-        createdAt: user.createdAt, // Make sure this is included
-        // ... other fields
-      });
-    } catch (error) {
-      console.error("Google auth error:", error);
-      res.status(500).json({ message: "Authentication failed" });
+      await user.save();
     }
-  };
+
+    const token = generateToken(user._id);
+
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
+      domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
+    });
+
+    res.status(200).json({
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      profilePic: user.profilePic,
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ message: "Authentication failed" });
+  }
+};

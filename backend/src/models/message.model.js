@@ -27,6 +27,16 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      }
+    ],
+    edited: {
+      type: Boolean,
+      default: false,
+    },    
   },
   {
     timestamps: true, // This adds createdAt and updatedAt fields

@@ -22,16 +22,26 @@ const userSchema = new mongoose.Schema(
     firebaseUid: {
       type: String,
       unique: true,
-      sparse: true // Allows null values while maintaining uniqueness
+      sparse: true, // Allows null values while maintaining uniqueness
     },
     bio: {
       type: String,
       default: "",
-      maxlength: 150 // WhatsApp-like character limit
-    }
+      maxlength: 150, // WhatsApp-like character limit
+    },
+
+    // Add these fields to store OTP and reset token info
+    otp: {
+      code: { type: String },
+      expiresAt: { type: Date },
+    },
+    resetToken: {
+      token: { type: String },
+      expiresAt: { type: Date },
+    },
   },
   {
-    timestamps: true, // This adds createdAt and updatedAt fields
+    timestamps: true, // adds createdAt and updatedAt fields
   }
 );
 

@@ -29,6 +29,53 @@ export const getUsersForSidebar = async (req, res) => {
         });
     }
 }; // Fixed missing closing brace
+// Edit a message
+export const editMessage = async (req, res) => {
+  const { id } = req.params;
+  const { newText } = req.body;
+  const userId = req.user._id;
+
+  try {
+    const message = await Message.findById(id);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    message.text = newText;
+    message.edited = true;
+    await message.save();
+
+    return res.status(200).json({ success: true, message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Toggle like/unlike
+export const toggleLike = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user._id;
+
+  try {
+    const message = await Message.findById(id);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+
+    const index = message.likes.indexOf(userId);
+    if (index === -1) {
+      message.likes.push(userId);
+    } else {
+      message.likes.splice(index, 1);
+    }
+
+    await message.save();
+
+    return res.status(200).json({ success: true, message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 export const getMessages = async (req, res) => {
     try {
         const { id: userToChatId } = req.params;

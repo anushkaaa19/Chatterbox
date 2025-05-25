@@ -7,6 +7,10 @@ import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import LearnPage from "./pages/LearnPage";
 import DemoPage from "./pages/DemoPage";
+import ForgotPassword from "./pages/ForgotPassword";
+import VerifyOtp from "./pages/VerifyOtp";  // import the component
+import ResetPassword from "./pages/ResetPassword";
+
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
@@ -22,6 +26,18 @@ const App = () => {
   const { theme } = useThemeStore();
 
   console.log({ onlineUsers });
+  // Add to your main App component
+useEffect(() => {
+  const checkAuthState = async () => {
+    // Skip check if no auth indicators exist
+    if (!document.cookie.includes('jwt')) {
+      useAuthStore.setState({ authUser: null, isCheckingAuth: false });
+      return;
+    }
+    await useAuthStore.getState().checkAuth();
+  };
+  checkAuthState();
+}, []);
 
   useEffect(() => {
     checkAuth();
@@ -48,6 +64,14 @@ const App = () => {
         <Route path="/learn" element={<LearnPage />} />
         <Route path="/demo" element={<DemoPage />} />
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
+<Route path="/verify-otp" element={!authUser ? <VerifyOtp /> : <Navigate to="/" />} />
+<Route path="/reset-password" element={<ResetPassword />} />
+
+
+
+        <Route path="/password" element={!authUser ? <ForgotPassword /> : <Navigate to="/" />} />
+        
+
       </Routes>
 
       <Toaster />
