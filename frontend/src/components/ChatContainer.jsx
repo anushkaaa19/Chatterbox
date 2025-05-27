@@ -17,9 +17,12 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
   } = useChatStore();
 
-  const { authUser } = useAuthStore();
+  const authUser = useAuthStore((state) => state.authUser);
+  const isCheckingAuth = useAuthStore((state) => state.isCheckingAuth);
+
   const messageEndRef = useRef(null);
 
+  // Hooks must always be called unconditionally and in the same order
   useEffect(() => {
     if (!selectedUser?._id) return;
 
@@ -38,8 +41,19 @@ const ChatContainer = () => {
     }
   }, [messages]);
 
-  const isOwnMessage = (senderId) =>
-    senderId?.toString() === authUser?._id?.toString();
+  // Early returns after hooks
+  if (isCheckingAuth) {
+    return <div>Loading chat...</div>;
+  }
+
+  if (!authUser || !authUser._id) {
+    return <div>Please log in to use the chat.</div>;
+  }
+
+  const isOwnMessage = (senderId) => {
+    const id = senderId?._id || senderId;
+    return id?.toString() === authUser._id?.toString();
+  };
 
   const handleEdit = (id, oldText) => {
     const newText = prompt("Edit your message", oldText);
@@ -83,7 +97,7 @@ const ChatContainer = () => {
                     src={
                       own
                         ? authUser.profilePic || "/avatar.png"
-                        : selectedUser.profilePic || "/avatar.png"
+                        : selectedUser?.profilePic || "/avatar.png"
                     }
                     alt="profile pic"
                   />
@@ -106,7 +120,6 @@ const ChatContainer = () => {
                       )}
                     </p>
 
-                    {/* Like heart below message text, shown only if liked */}
                     {likedByCurrentUser && (
                       <button
                         aria-label="Unlike message"
@@ -119,7 +132,6 @@ const ChatContainer = () => {
                   </>
                 )}
 
-                {/* Options menu (visible on hover) */}
                 <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
                   <MessageOptionsMenu
                     isOwnMessage={own}
@@ -142,4 +154,3 @@ const ChatContainer = () => {
 };
 
 export default ChatContainer;
-
