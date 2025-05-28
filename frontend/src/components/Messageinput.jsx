@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useEffect } from "react";
 import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
+import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
 
 const MessageInput = () => {
@@ -18,6 +20,27 @@ const MessageInput = () => {
   const { sendMessage } = useChatStore();
 
   // -------- Image Handling --------
+  const socket = useAuthStore((state) => state.socket);
+  const authUser = useAuthStore((state) => state.authUser);
+
+  useEffect(() => {
+    if (!socket || !authUser) return;
+
+    let typingTimeout;
+
+    if (text.trim()) {
+      socket.emit("typing", { userId: authUser._id });
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit("stopTyping", { userId: authUser._id });
+      }, 1000); // stop typing after 1s of inactivity
+    } else {
+      socket.emit("stopTyping", { userId: authUser._id });
+    }
+
+    return () => clearTimeout(typingTimeout);
+  }, [text, socket, authUser]);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return; // No file selected

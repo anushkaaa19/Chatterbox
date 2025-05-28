@@ -18,7 +18,9 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
-    // You might want to add these fields for additional functionality
+    audio: {
+      type: String, // ✅ Add this to support audio messages
+    },
     seen: {
       type: Boolean,
       default: false,
@@ -31,15 +33,15 @@ const messageSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-      }
+      },
     ],
     edited: {
       type: Boolean,
       default: false,
-    },    
+    },
   },
   {
-    timestamps: true, // This adds createdAt and updatedAt fields
+    timestamps: true, // createdAt and updatedAt
   }
 );
 

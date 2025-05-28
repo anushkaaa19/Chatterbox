@@ -9,7 +9,45 @@ export const useChatStore = create((set, get) => ({
   selectedUser: null,   // currently selected chat user
   isUsersLoading: false,
   isMessagesLoading: false,
+  messages: [],
+  typingUsers: [],
 
+  // Other states and methods...
+
+  addTypingUser: (userId) => {
+    set((state) => ({
+      typingUsers: state.typingUsers.includes(userId)
+        ? state.typingUsers
+        : [...state.typingUsers, userId],
+    }));
+  },
+
+  removeTypingUser: (userId) => {
+    set((state) => ({
+      typingUsers: state.typingUsers.filter((id) => id !== userId),
+    }));
+  },
+
+  subscribeToTypingEvents: () => {
+    const socket = get().socket; // assume you store socket here
+    if (!socket) return;
+
+    socket.on("typing", ({ userId }) => {
+      get().addTypingUser(userId);
+    });
+
+    socket.on("stopTyping", ({ userId }) => {
+      get().removeTypingUser(userId);
+    });
+  },
+
+  unsubscribeFromTypingEvents: () => {
+    const socket = get().socket;
+    if (!socket) return;
+
+    socket.off("typing");
+    socket.off("stopTyping");
+  },
   // Fetch all users for sidebar
   getUsers: async () => {
     set({ isUsersLoading: true });
