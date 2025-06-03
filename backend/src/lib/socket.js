@@ -30,13 +30,20 @@ io.on("connection", (socket) => {
   }
 
   // Typing indicator: broadcast to all except sender
-  socket.on("typing", ({ userId }) => {
-    socket.broadcast.emit("typing", { userId });
+  socket.on("typing", ({ fromUserId, toUserId }) => {
+    const receiverSocketId = userSocketMap[toUserId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("typing", { userId: fromUserId });
+    }
   });
-
-  socket.on("stopTyping", ({ userId }) => {
-    socket.broadcast.emit("stopTyping", { userId });
+  
+  socket.on("stopTyping", ({ fromUserId, toUserId }) => {
+    const receiverSocketId = userSocketMap[toUserId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("stopTyping", { userId: fromUserId });
+    }
   });
+  
 
   socket.on("disconnect", () => {
     console.log("User disconnected", socket.id);

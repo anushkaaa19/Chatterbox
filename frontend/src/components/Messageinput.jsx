@@ -22,25 +22,36 @@ const MessageInput = () => {
   // -------- Image Handling --------
   const socket = useAuthStore((state) => state.socket);
   const authUser = useAuthStore((state) => state.authUser);
+  const selectedUser = useChatStore((state) => state.selectedUser);
+
 
   useEffect(() => {
-    if (!socket || !authUser) return;
-
+    if (!socket || !authUser || !selectedUser) return;
+  
     let typingTimeout;
-
+  
     if (text.trim()) {
-      socket.emit("typing", { userId: authUser._id });
+      socket.emit("typing", {
+        fromUserId: authUser._id,
+        toUserId: selectedUser._id,
+      });
+  
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
-        socket.emit("stopTyping", { userId: authUser._id });
-      }, 1000); // stop typing after 1s of inactivity
+        socket.emit("stopTyping", {
+          fromUserId: authUser._id,
+          toUserId: selectedUser._id,
+        });
+      }, 1000);
     } else {
-      socket.emit("stopTyping", { userId: authUser._id });
+      socket.emit("stopTyping", {
+        fromUserId: authUser._id,
+        toUserId: selectedUser._id,
+      });
     }
-
+  
     return () => clearTimeout(typingTimeout);
-  }, [text, socket, authUser]);
-
+  }, [text, socket, authUser, selectedUser]);
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return; // No file selected

@@ -3,16 +3,14 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
+
 export const useChatStore = create((set, get) => ({
-  messages: [],         // list of messages in the current chat
-  users: [],            // list of users for sidebar
-  selectedUser: null,   // currently selected chat user
+  users: [],
+  messages: [],
+  selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
-  messages: [],
   typingUsers: [],
-
-  // Other states and methods...
 
   addTypingUser: (userId) => {
     set((state) => ({
@@ -29,7 +27,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   subscribeToTypingEvents: () => {
-    const socket = get().socket; // assume you store socket here
+    const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
     socket.on("typing", ({ userId }) => {
@@ -42,13 +40,13 @@ export const useChatStore = create((set, get) => ({
   },
 
   unsubscribeFromTypingEvents: () => {
-    const socket = get().socket;
+    const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
     socket.off("typing");
     socket.off("stopTyping");
   },
-  // Fetch all users for sidebar
+
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
@@ -63,7 +61,6 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // Fetch messages for the selected user
   getMessages: async (userId) => {
     set({ isMessagesLoading: true });
     try {
@@ -79,7 +76,6 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // Send message to selected user
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     if (!selectedUser?._id) {
@@ -93,7 +89,6 @@ export const useChatStore = create((set, get) => ({
         `/messages/send/${selectedUser._id}`,
         messageData
       );
-      // The backend should return the saved message object
       const newMsg = res.data?.message ?? res.data;
       if (!newMsg || !newMsg._id) {
         throw new Error("Invalid message returned from server");
@@ -106,12 +101,14 @@ export const useChatStore = create((set, get) => ({
       throw err;
     }
   },
+
   updateMessage: (updatedMessage) => {
-    const messages = get().messages.map((msg) =>
+    const updated = get().messages.map((msg) =>
       msg._id === updatedMessage._id ? updatedMessage : msg
     );
-    set({ messages });
+    set({ messages: updated });
   },
+
   editMessage: async (id, newText) => {
     try {
       const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
@@ -120,29 +117,25 @@ export const useChatStore = create((set, get) => ({
       toast.error(err.response?.data?.message || "Failed to edit message");
     }
   },
-  
-  
-toggleLike: (messageId) => {
-  const { authUser } = useAuthStore.getState();
-  if (!authUser || !authUser._id) return;
 
-  set((state) => ({
-    messages: state.messages.map((msg) =>
-      msg._id === messageId
-        ? {
-            ...msg,
-            likes: msg.likes.includes(authUser._id)
-              ? msg.likes.filter((uid) => uid !== authUser._id) // Unlike
-              : [...msg.likes, authUser._id],                   // Like
-          }
-        : msg
-    ),
-  }));
-},
-  
-  
-  
-  // Subscribe to real-time messages from socket.io
+  toggleLike: (messageId) => {
+    const { authUser } = useAuthStore.getState();
+    if (!authUser || !authUser._id) return;
+
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg._id === messageId
+          ? {
+              ...msg,
+              likes: msg.likes.includes(authUser._id)
+                ? msg.likes.filter((uid) => uid !== authUser._id)
+                : [...msg.likes, authUser._id],
+            }
+          : msg
+      ),
+    }));
+  },
+
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
@@ -150,9 +143,7 @@ toggleLike: (messageId) => {
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
-      // Only add messages from currently selected user
-      const isFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if (!isFromSelectedUser) return;
+      if (newMessage.senderId !== selectedUser._id) return;
 
       set({
         messages: [...get().messages, newMessage],
@@ -164,10 +155,8 @@ toggleLike: (messageId) => {
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.off("newMessage");
-    } else {
-      console.warn("unsubscribeFromMessages: socket is null or undefined");
     }
   },
-  
+
   setSelectedUser: (user) => set({ selectedUser: user }),
 }));

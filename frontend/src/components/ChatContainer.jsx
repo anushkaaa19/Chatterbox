@@ -176,18 +176,7 @@ const ChatContainer = () => {
             );
           })}
 
-          {typingUsers.length > 0 && (
-            <div className="p-2 italic text-sm text-gray-500">
-              {typingUsers
-                .filter((userId) => userId !== authUser._id)
-                .map((userId, i) => (
-                  <span key={userId}>
-                    {i > 0 && ", "}
-                    Typing...
-                  </span>
-                ))}
-            </div>
-          )}
+          
 
           <div ref={messageEndRef} />
         </div>
