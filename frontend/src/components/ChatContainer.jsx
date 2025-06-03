@@ -3,7 +3,7 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { MessageOptionsMenu } from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
-import MessageInput from "./Messageinput"; // fixed import case
+import MessageInput from "./Messageinput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
@@ -20,12 +20,25 @@ const ChatContainer = () => {
     typingUsers,
   } = useChatStore();
 
-  const authUser = useAuthStore((state) => state.authUser);
-  const isCheckingAuth = useAuthStore((state) => state.isCheckingAuth);
-  const socket = useAuthStore((state) => state.socket);
+  const {
+    authUser,
+    isCheckingAuth,
+    socket,
+    setAuthUser,
+    setIsCheckingAuth,
+    checkAuth,
+  } = useAuthStore();
 
   const messageEndRef = useRef(null);
 
+  // ✅ Call checkAuth on mount only if we haven't finished checking yet
+  useEffect(() => {
+    if (isCheckingAuth) {
+      checkAuth(); // checkAuth will set isCheckingAuth to false once done
+    }
+  }, [isCheckingAuth, checkAuth]);
+
+  // ✅ Subscribe to messages when user and socket exist
   useEffect(() => {
     if (!selectedUser?._id || !socket) return;
 
@@ -37,26 +50,24 @@ const ChatContainer = () => {
       unsubscribeFromMessages();
       unsubscribeFromTypingEvents();
     };
-  }, [selectedUser?._id, socket, getMessages, subscribeToMessages, unsubscribeFromMessages, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
+  }, [selectedUser?._id, socket]);
 
+  // ✅ Scroll to bottom on new messages
   useEffect(() => {
     if (messageEndRef.current && messages.length) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
+  // ✅ Show loading / login prompt
   if (isCheckingAuth) return <div>Loading chat...</div>;
   if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
   const isOwnMessage = (senderId) => {
-    // senderId can be string or object
     if (!senderId) return false;
-    if (typeof senderId === "string") {
-      return senderId === authUser._id;
-    }
-    if (typeof senderId === "object" && senderId._id) {
+    if (typeof senderId === "string") return senderId === authUser._id;
+    if (typeof senderId === "object" && senderId._id)
       return senderId._id === authUser._id;
-    }
     return false;
   };
 
@@ -165,14 +176,14 @@ const ChatContainer = () => {
             );
           })}
 
-          {/* Typing indicator below messages */}
           {typingUsers.length > 0 && (
             <div className="p-2 italic text-sm text-gray-500">
               {typingUsers
                 .filter((userId) => userId !== authUser._id)
-                .map((userId, i, arr) => (
+                .map((userId, i) => (
                   <span key={userId}>
-                    {i > 0 && ", "}Typing...
+                    {i > 0 && ", "}
+                    Typing...
                   </span>
                 ))}
             </div>
