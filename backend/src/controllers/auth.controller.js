@@ -206,58 +206,54 @@ export const logout = (req, res) => {
   }
 };
 
-// Update profile picture controller
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
     const userId = req.user._id;
+    const { profilePic, fullName, bio } = req.body;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile picture is required" });
+    const updateData = {};
+
+    if (profilePic) {
+      // Upload image and set URL
+      const uploadResponse = await cloudinary.uploader.upload(profilePic, {
+        folder: "profile-pictures",
+        resource_type: "auto",
+      });
+      updateData.profilePic = uploadResponse.secure_url;
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic, {
-      folder: "profile-pictures",
-      resource_type: "auto",
-    });
+    if (fullName !== undefined) {
+      updateData.fullName = fullName;
+    }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { profilePic: uploadResponse.secure_url },
-      { new: true, select: "-password" }
-    );
+    if (bio !== undefined) {
+      updateData.bio = bio;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No data to update" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      select: "-password",
+    });
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
+    console.log("Updated user data:", updatedUser);
 
     res.status(200).json({
       message: "Profile updated successfully",
-      user: {
-        _id: updatedUser._id,
-        fullName: updatedUser.fullName,
-        email: updatedUser.email,
-        profilePic: updatedUser.profilePic,
-        createdAt: updatedUser.createdAt,
-        updatedAt: updatedUser.updatedAt,
-      },
+      user: updatedUser,
     });
   } catch (error) {
     console.error("Error in updateProfile controller:", error);
-
-    const errorMessage = error.message || "Failed to upload image";
-
-    if (errorMessage.includes("File size too large")) {
-      return res.status(413).json({ message: "File size too large" });
-    }
-
-    if (errorMessage.includes("Invalid image file")) {
-      return res.status(415).json({ message: "Invalid file type" });
-    }
-
-    res.status(500).json({ message: errorMessage });
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Check auth (returns user data if logged in)
 export const checkAuth = (req, res) => {

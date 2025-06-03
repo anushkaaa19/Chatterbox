@@ -169,19 +169,25 @@ export const useAuthStore = create(
           toast.error(error.response?.data?.message || error.message);
         }
       },
-
       updateProfile: async (data) => {
         set({ isUpdatingProfile: true });
         try {
-          const res = await axiosInstance.put("/auth/update-profile", data);
-          set({ authUser: res.data });
+          // Use axiosInstance for consistency and automatic headers (including cookies)
+          const response = await axiosInstance.put("/auth/update-profile", data);
+          if (response.status !== 200) {
+            throw new Error("Failed to update profile");
+          }
+          set({ authUser: response.data.user });
           toast.success("Profile updated successfully");
-        } catch (error) {
-          toast.error(error.response?.data?.message || error.message);
+        } catch (err) {
+          console.error("Update profile error:", err);
+          toast.error(err.response?.data?.message || err.message || "Failed to update profile");
         } finally {
           set({ isUpdatingProfile: false });
         }
       },
+      
+      
 
       connectSocket: () => {
         const { authUser, socket } = get();
