@@ -6,6 +6,8 @@ import { connectDB } from "./lib/db.js";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import {app,server} from "./lib/socket.js"
+import fileUpload from "express-fileupload";
+
 import path from "path";
 import groupRoutes from "./routes/group.route.js";
 dotenv.config();
@@ -21,7 +23,10 @@ app.use(cors({
     origin: "http://localhost:3000",
     credentials: true,
 }));
-
+app.use(fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/tmp/",
+  }));
 
 app.use('/api/groups', groupRoutes);
 

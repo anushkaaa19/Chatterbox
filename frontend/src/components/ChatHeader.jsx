@@ -1,91 +1,71 @@
-import { useState } from "react";
-import { useChatStore } from "../store/useChatStore";
-import { useGroupStore } from "../store/useGroupStore";
 import { X } from "lucide-react";
+import { useAuthStore } from "../store/useAuthStore";
+import { useChatStore } from "../store/useChatStore";
 
-const CreateGroupModal = ({ onClose }) => {
-  const { users } = useChatStore();
-  const { createGroup } = useGroupStore();
+const ChatHeader = () => {
+  const { selectedUser, setSelectedUser, typingUsers } = useChatStore();
+  const { onlineUsers } = useAuthStore();
 
-  const [groupName, setGroupName] = useState("");
-  const [avatar, setAvatar] = useState(null);
-  const [selectedUserIds, setSelectedUserIds] = useState([]);
-
-  const toggleUserSelection = (userId) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+  if (!selectedUser) {
+    return (
+      <div className="p-2.5 border-b border-base-300">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="avatar">
+              <div className="size-10 rounded-full bg-base-300"></div>
+            </div>
+            <div>
+              <h3 className="font-medium">No user selected</h3>
+            </div>
+          </div>
+        </div>
+      </div>
     );
-  };
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!groupName.trim() || selectedUserIds.length < 2) {
-      alert("Please enter a group name and select at least 2 members.");
-      return;
-    }
-    const formData = new FormData();
-    formData.append("name", groupName);
-    formData.append("members", JSON.stringify(selectedUserIds));
-    if (avatar) formData.append("profilePic", avatar);
-
-    await createGroup(formData);
-    onClose();
-  };
+  const isTyping = typingUsers.includes(selectedUser._id);
+  const isOnline = onlineUsers?.includes(selectedUser._id);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg p-6 w-11/12 max-w-md relative">
-        <button onClick={onClose} className="absolute top-3 right-3 text-zinc-600 hover:text-zinc-900">
-          <X className="size-5" />
-        </button>
-
-        <h2 className="text-lg font-semibold mb-4">Create New Group</h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Group name"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            className="w-full border border-zinc-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setAvatar(e.target.files[0])}
-            className="w-full"
-          />
-
-          <div className="max-h-64 overflow-y-auto space-y-2">
-            {users.map((user) => (
-              <label key={user._id} className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedUserIds.includes(user._id)}
-                  onChange={() => toggleUserSelection(user._id)}
-                  className="checkbox checkbox-sm"
-                />
-                <img
-                  src={user.profilePic || "/avatar.png"}
-                  className="w-8 h-8 rounded-full"
-                  alt={user.fullName}
-                />
-                <span>{user.fullName}</span>
-              </label>
-            ))}
+    <div className="p-2.5 border-b border-base-300">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="avatar relative">
+            <div className="size-10 rounded-full overflow-hidden">
+              <img
+                src={selectedUser.profilePic || "/avatar.png"}
+                alt={selectedUser.fullName || "User avatar"}
+                className="w-10 h-10 object-cover"
+              />
+            </div>
+            {/* Online status green dot */}
+            {isOnline && (
+              <span
+                className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white bg-green-500"
+                title="Online"
+              />
+            )}
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-          >
-            Create Group
-          </button>
-        </form>
+          <div>
+            <h3 className="font-medium">{selectedUser.fullName || "Unknown User"}</h3>
+            <p className="text-sm text-base-content/70">
+              {isOnline ? "Online" : "Offline"}
+            </p>
+            {isTyping && <p className="text-xs text-blue-500 italic">Typing...</p>}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setSelectedUser(null)}
+          aria-label="Close chat"
+          className="p-1 hover:bg-base-200 rounded"
+        >
+          <X size={20} />
+        </button>
       </div>
     </div>
   );
 };
 
-export default CreateGroupModal;
+export default ChatHeader;

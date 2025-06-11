@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import { toast } from "react-hot-toast";
-import { useAuthStore } from "./useAuthStore"; // make sure this path is correct
+import { useAuthStore } from "./useAuthStore";
 
 export const useGroupStore = create((set, get) => ({
   groups: [],
@@ -10,10 +10,8 @@ export const useGroupStore = create((set, get) => ({
   isGroupLoading: false,
 
   setSelectedGroup: (group) => set({ selectedGroup: group }),
-
   setGroupMessages: (messages) => set({ groupMessages: messages }),
 
-  // ✅ Fetch all groups the user is part of
   getGroups: async () => {
     set({ isGroupLoading: true });
     try {
@@ -25,24 +23,27 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  // ✅ Create a new group
   createGroup: async (formData) => {
     try {
-      const res = await fetch("/api/groups", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
+      const res = await axiosInstance.post("/groups", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
-  
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create group");
+
+      const data = res.data;
+      toast.success("Group created successfully");
+
+      await get().getGroups(); // Refresh after creation
+
+      return data.group;
     } catch (err) {
       console.error("Create group failed:", err);
+      toast.error("Failed to create group");
+      throw err;
     }
   },
-  
 
-  // ✅ Load all messages from a specific group
   getGroupMessages: async (groupId) => {
     try {
       const { data } = await axiosInstance.get(`/groups/${groupId}/messages`);
@@ -54,17 +55,19 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  // ✅ Send a group message
   sendGroupMessage: async (groupId, messageData) => {
     try {
-      const res = await axiosInstance.post(`/groups/${groupId}/messages`, messageData);
+      const res = await axiosInstance.post(
+        `/groups/${groupId}/messages`,
+        messageData
+      );
+
       const newMessage = res.data?.message;
 
       set((state) => ({
         groupMessages: [...state.groupMessages, newMessage],
       }));
 
-      // Emit via socket to all group members
       const socket = useAuthStore.getState().socket;
       if (socket) {
         socket.emit("sendGroupMessage", { groupId, message: newMessage });
@@ -75,7 +78,6 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  // ✅ Subscribe to real-time incoming group messages
   subscribeToGroupMessages: (groupId) => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
@@ -89,7 +91,6 @@ export const useGroupStore = create((set, get) => ({
     });
   },
 
-  // ✅ Unsubscribe from socket messages when leaving
   unsubscribeFromGroupMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (socket) {
@@ -97,7 +98,6 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  // Optional: store socket for group-specific use
   socket: null,
   setSocket: (socket) => set({ socket }),
 }));

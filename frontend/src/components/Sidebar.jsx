@@ -108,7 +108,7 @@ const Sidebar = () => {
               key={user._id}
               onClick={() => {
                 setSelectedUser(user);
-                setSelectedGroup(null); // 🔄 clear group selection
+                setSelectedGroup(null);
               }}
               className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
                 selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""
@@ -139,7 +139,7 @@ const Sidebar = () => {
               key={group._id}
               onClick={() => {
                 setSelectedGroup(group);
-                setSelectedUser(null); // 🔄 clear user selection
+                setSelectedUser(null);
               }}
               className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
                 selectedGroup?._id === group._id ? "bg-base-300 ring-1 ring-base-300" : ""
@@ -161,7 +161,6 @@ const Sidebar = () => {
             </button>
           ))}
 
-        {/* 🔕 No results */}
         {!showGroups && filteredUsers.length === 0 && (
           <div className="text-center text-zinc-500 py-4">No users found</div>
         )}
@@ -172,7 +171,12 @@ const Sidebar = () => {
 
       {/* 🧩 Create Group Modal */}
       {showCreateGroupModal && (
-        <CreateGroupModal onClose={() => setShowCreateGroupModal(false)} />
+        <CreateGroupModal
+          onClose={() => {
+            getGroups(); // ✅ Refresh groups when modal closes
+            setShowCreateGroupModal(false);
+          }}
+        />
       )}
     </aside>
   );
