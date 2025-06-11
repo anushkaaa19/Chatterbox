@@ -8,8 +8,8 @@ const CreateGroupModal = ({ onClose }) => {
   const { createGroup } = useGroupStore();
 
   const [groupName, setGroupName] = useState("");
-  const [avatar, setAvatar] = useState(null);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [avatar, setAvatar] = useState(null); // New
 
   const toggleUserSelection = (userId) => {
     setSelectedUserIds((prev) =>
@@ -19,16 +19,18 @@ const CreateGroupModal = ({ onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!groupName.trim() || selectedUserIds.length < 2) {
       alert("Please enter a group name and select at least 2 members.");
       return;
     }
+
     const formData = new FormData();
     formData.append("name", groupName);
     formData.append("members", JSON.stringify(selectedUserIds));
-    if (avatar) formData.append("profilePic", avatar);
+    if (avatar) formData.append("avatar", avatar);
 
-    await createGroup(formData);
+    await createGroup(formData); // expects FormData
     onClose();
   };
 
@@ -47,9 +49,10 @@ const CreateGroupModal = ({ onClose }) => {
             placeholder="Group name"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
-            className="w-full border border-zinc-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-zinc-300 rounded-md px-4 py-2"
           />
 
+          {/* Avatar Upload */}
           <input
             type="file"
             accept="image/*"
@@ -64,13 +67,8 @@ const CreateGroupModal = ({ onClose }) => {
                   type="checkbox"
                   checked={selectedUserIds.includes(user._id)}
                   onChange={() => toggleUserSelection(user._id)}
-                  className="checkbox checkbox-sm"
                 />
-                <img
-                  src={user.profilePic || "/avatar.png"}
-                  className="w-8 h-8 rounded-full"
-                  alt={user.fullName}
-                />
+                <img src={user.profilePic || "/avatar.png"} className="w-8 h-8 rounded-full" alt={user.fullName} />
                 <span>{user.fullName}</span>
               </label>
             ))}
@@ -89,3 +87,4 @@ const CreateGroupModal = ({ onClose }) => {
 };
 
 export default CreateGroupModal;
+

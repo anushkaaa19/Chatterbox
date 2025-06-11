@@ -7,7 +7,7 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import {app,server} from "./lib/socket.js"
 import path from "path";
-
+import groupRoutes from "./routes/group.route.js";
 dotenv.config();
 
 const PORT = process.env.PORT || 5001; // Use default port if not defined
@@ -22,6 +22,8 @@ app.use(cors({
     credentials: true,
 }));
 
+
+app.use('/api/groups', groupRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);
