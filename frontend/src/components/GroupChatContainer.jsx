@@ -14,22 +14,9 @@ const GroupChatContainer = () => {
   } = useGroupStore();
 
   const socket = useAuthStore((state) => state.socket);
-  const currentUser = useAuthStore((state) => state.authUser); // Changed to authUser
+  const currentUser = useAuthStore((state) => state.authUser);
   const [loading, setLoading] = useState(false);
 
-  // Debug logs
-  useEffect(() => {
-    console.log("--- DEBUG INFO ---");
-    console.log("Current User ID:", currentUser?._id);
-    console.log("Group Messages:", groupMessages.map(msg => ({
-      id: msg._id,
-      senderId: msg.sender?._id,
-      isOwn: msg.sender?._id?.toString() === currentUser?._id?.toString(),
-      content: msg.content?.text || "[media]"
-    })));
-  }, [groupMessages, currentUser]);
-
-  // Load messages
   useEffect(() => {
     const fetchMessages = async () => {
       if (!selectedGroup) return;
@@ -47,13 +34,11 @@ const GroupChatContainer = () => {
     fetchMessages();
   }, [selectedGroup, getGroupMessages, setGroupMessages]);
 
-  // Listen to incoming messages
   useEffect(() => {
     if (!socket || !selectedGroup) return;
 
     const handleNewGroupMessage = ({ groupId, message }) => {
       if (groupId === selectedGroup._id) {
-        console.log("New message received:", message);
         setGroupMessages((prev) => [...prev, message]);
       }
     };
@@ -62,7 +47,6 @@ const GroupChatContainer = () => {
     return () => socket.off("receiveGroupMessage", handleNewGroupMessage);
   }, [socket, selectedGroup, setGroupMessages]);
 
-  // Scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [groupMessages]);
@@ -74,7 +58,7 @@ const GroupChatContainer = () => {
 
   if (!selectedGroup) {
     return (
-      <div className="flex-1 flex items-center justify-center text-zinc-500">
+      <div className="flex-1 flex items-center justify-center text-base-content opacity-50">
         Select a group to start chatting.
       </div>
     );
@@ -82,95 +66,86 @@ const GroupChatContainer = () => {
 
   if (!currentUser) {
     return (
-      <div className="flex-1 flex items-center justify-center text-zinc-500">
+      <div className="flex-1 flex items-center justify-center text-base-content opacity-50">
         Please login to view messages.
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col flex-1 h-full">
+    <div className="flex flex-col flex-1 h-full bg-base-100">
       <GroupChatHeader group={selectedGroup} />
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
         {loading ? (
-          <p className="text-center text-zinc-500">Loading messages...</p>
+          <div className="text-center text-base-content opacity-50">
+            <span className="loading loading-spinner loading-md" />
+            Loading messages...
+          </div>
         ) : groupMessages.length > 0 ? (
           groupMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
-            
+
             return (
               <div
                 key={msg._id}
                 className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
               >
-                <div className={`flex ${isOwn ? "flex-row-reverse" : ""} max-w-[80%] gap-2`}>
+                <div className={`flex items-end ${isOwn ? "flex-row-reverse" : ""} gap-3 max-w-[85%]`}>
                   {/* Avatar */}
-                  {!isOwn && (
-                    <div className="flex-shrink-0">
+                  <div className="avatar">
+                    <div className="w-8 rounded-full">
                       <img
-                        src={msg.sender?.profilePic || "/avatar.png"}
+                        src={
+                          isOwn
+                            ? currentUser?.profilePic || "/avatar.png"
+                            : msg.sender?.profilePic || "/avatar.png"
+                        }
                         alt="avatar"
-                        className="w-8 h-8 rounded-full"
                       />
                     </div>
-                  )}
+                  </div>
 
-                  {/* Message Content */}
-                  <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
+                  {/* Message Bubble */}
+                  <div className={`chat ${isOwn ? "chat-end" : "chat-start"}`}>
                     {!isOwn && (
-                      <span className="text-xs text-zinc-400 mb-1">
-                        {msg.sender?.fullName || "User"}
-                      </span>
+                      <div className="text-xs text-base-content opacity-60">
+                        {msg.sender?.fullName}
+                      </div>
                     )}
-
                     <div
-                      className={`p-3 rounded-lg ${
-                        isOwn
-                          ? "bg-indigo-600 text-white rounded-br-none"
-                          : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none"
-                      }`}
+                      className={`chat-bubble ${isOwn ? "chat-bubble-primary" : "bg-base-200 text-base-content"}`}
                     >
                       {msg.content?.text && <p>{msg.content.text}</p>}
+
                       {msg.content?.image && (
                         <img
                           src={msg.content.image}
                           alt="sent"
-                          className="mt-2 rounded-md max-w-[200px] max-h-[200px] object-cover"
+                          className="mt-2 rounded-md max-w-xs max-h-48 object-cover"
                         />
                       )}
+
                       {msg.content?.audio && (
-                        <audio controls className="mt-2 w-full max-w-[250px]">
+                        <audio controls className="mt-2 w-full max-w-xs">
                           <source src={msg.content.audio} />
                         </audio>
                       )}
                     </div>
-
-                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
-                    </span>
-                  </div>
-
-                  {/* Your avatar on the right */}
-                  {isOwn && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={currentUser.profilePic || "/avatar.png"}
-                        alt="your avatar"
-                        className="w-8 h-8 rounded-full"
-                      />
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             );
           })
         ) : (
-          <p className="text-center text-zinc-500">No messages yet.</p>
+          <p className="text-center text-base-content opacity-50">No messages yet.</p>
         )}
         <div ref={bottomRef} />
       </div>

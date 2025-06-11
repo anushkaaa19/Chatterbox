@@ -9,11 +9,13 @@ const CreateGroupModal = ({ onClose }) => {
 
   const [groupName, setGroupName] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState([]);
-  const [avatar, setAvatar] = useState(null); // New
+  const [avatar, setAvatar] = useState(null);
 
   const toggleUserSelection = (userId) => {
     setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
     );
   };
 
@@ -21,7 +23,7 @@ const CreateGroupModal = ({ onClose }) => {
     e.preventDefault();
 
     if (!groupName.trim() || selectedUserIds.length < 2) {
-      alert("Please enter a group name and select at least 2 members.");
+      alert("Enter a group name and select at least 2 members.");
       return;
     }
 
@@ -30,54 +32,76 @@ const CreateGroupModal = ({ onClose }) => {
     formData.append("members", JSON.stringify(selectedUserIds));
     if (avatar) formData.append("avatar", avatar);
 
-    await createGroup(formData); // expects FormData
+    await createGroup(formData);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg p-6 w-11/12 max-w-md relative">
-        <button onClick={onClose} className="absolute top-3 right-3 text-zinc-600 hover:text-zinc-900">
-          <X className="size-5" />
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-base-100 rounded-xl shadow-lg w-full max-w-lg relative p-6">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 text-base-content hover:text-error"
+        >
+          <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-lg font-semibold mb-4">Create New Group</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center">Create New Group</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Group name"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            className="w-full border border-zinc-300 rounded-md px-4 py-2"
-          />
+          {/* Group Name */}
+          <div>
+            <label className="label">
+              <span className="label-text">Group Name</span>
+            </label>
+            <input
+              type="text"
+              className="input input-bordered w-full"
+              placeholder="Enter group name"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+            />
+          </div>
 
           {/* Avatar Upload */}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setAvatar(e.target.files[0])}
-            className="w-full"
-          />
+          <div>
+            <label className="label">
+              <span className="label-text">Group Avatar (optional)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setAvatar(e.target.files[0])}
+              className="file-input file-input-bordered w-full"
+            />
+          </div>
 
-          <div className="max-h-64 overflow-y-auto space-y-2">
+          {/* User List */}
+          <div className="max-h-60 overflow-y-auto space-y-2 border border-base-300 rounded-md p-3">
             {users.map((user) => (
-              <label key={user._id} className="flex items-center gap-3 cursor-pointer">
+              <label
+                key={user._id}
+                className="flex items-center gap-3 cursor-pointer"
+              >
                 <input
                   type="checkbox"
+                  className="checkbox checkbox-primary"
                   checked={selectedUserIds.includes(user._id)}
                   onChange={() => toggleUserSelection(user._id)}
                 />
-                <img src={user.profilePic || "/avatar.png"} className="w-8 h-8 rounded-full" alt={user.fullName} />
-                <span>{user.fullName}</span>
+                <div className="avatar">
+                  <div className="w-8 rounded-full">
+                    <img src={user.profilePic || "/avatar.png"} alt="avatar" />
+                  </div>
+                </div>
+                <span className="text-sm">{user.fullName}</span>
               </label>
             ))}
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-          >
+          {/* Submit */}
+          <button type="submit" className="btn btn-primary w-full">
             Create Group
           </button>
         </form>
@@ -87,4 +111,3 @@ const CreateGroupModal = ({ onClose }) => {
 };
 
 export default CreateGroupModal;
-

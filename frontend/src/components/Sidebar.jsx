@@ -90,12 +90,12 @@ const Sidebar = () => {
         {showGroups && (
           <div className="mt-3">
             <button
-              onClick={() => setShowCreateGroupModal(true)}
-              className="w-full flex items-center gap-2 text-sm text-white bg-blue-500 hover:bg-blue-600 px-3 py-2 rounded-md"
-            >
-              <Plus className="size-4" />
-              <span className="hidden lg:block">Create Group</span>
-            </button>
+  onClick={() => setShowCreateGroupModal(true)}
+  className="btn btn-primary w-full flex items-center gap-2"
+>
+  <Plus className="size-4" />
+  <span className="hidden lg:block">Create Group</span>
+</button>
           </div>
         )}
       </div>

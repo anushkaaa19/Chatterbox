@@ -25,32 +25,33 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
-      <form
-        onSubmit={handleSendOtp}
-        className="bg-[#1a1a1a] shadow-lg rounded-2xl p-8 w-full max-w-md space-y-6 border border-gray-700"
-      >
-        <div className="text-center">
-          <h2 className="text-2xl font-bold">Forgot Password</h2>
-          <p className="text-sm text-gray-400">Enter your email to receive an OTP</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-base-200 px-4">
+      <div className="card w-full max-w-md shadow-xl bg-base-100 border border-base-300">
+        <form onSubmit={handleSendOtp} className="card-body space-y-5">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold">Forgot Password</h2>
+            <p className="text-sm text-base-content/60">
+              Enter your email to receive an OTP
+            </p>
+          </div>
 
-        <input
-          type="email"
-          placeholder="Your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="input w-full bg-gray-900 text-white border-gray-700 focus:border-blue-500"
-        />
+          <label className="form-control w-full">
+            <span className="label-text font-medium">Email</span>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input input-bordered w-full"
+            />
+          </label>
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
-        >
-          Send OTP
-        </button>
-      </form>
+          <button type="submit" className="btn btn-primary w-full">
+            Send OTP
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
