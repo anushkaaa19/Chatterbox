@@ -75,57 +75,68 @@ const GroupChatContainer = () => {
           <p className="text-center text-zinc-500">Loading messages...</p>
         ) : groupMessages.length > 0 ? (
           groupMessages.map((msg) => {
-            const isOwn = msg.sender?._id === currentUser?._id;
+            const isOwn = msg.sender?._id?.toString() === currentUser?._id?.toString();
 
             return (
               <div
                 key={msg._id}
-                className={`flex items-end ${isOwn ? "justify-end" : "justify-start"}`}
+                className={`flex ${isOwn ? "justify-end" : "justify-start"} gap-2`}
               >
-                {/* Avatar left (others) */}
                 {!isOwn && (
-                  <img
-                    src={msg.sender?.profilePic || "/default-avatar.png"}
-                    alt="avatar"
-                    className="w-8 h-8 rounded-full mr-2"
-                  />
+                  <div className="flex flex-col items-center">
+                    <img
+                      src={msg.sender?.profilePic || "/avatar.png"}
+                      alt="avatar"
+                      className="w-8 h-8 rounded-full"
+                    />
+                    <span className="text-xs text-zinc-400 mt-1">
+                      {msg.sender?.fullName?.split(" ")[0] || "User"}
+                    </span>
+                  </div>
                 )}
 
-                {/* Message bubble */}
-                <div
-                  className={`p-3 rounded-lg shadow max-w-sm ${
-                    isOwn ? "bg-blue-600 text-white ml-2" : "bg-zinc-800 text-zinc-300 mr-2"
-                  }`}
-                >
-                  {!isOwn && (
-                    <div className="mb-1 text-sm font-medium">
-                      {msg.sender?.fullName || "Unknown"}
-                    </div>
-                  )}
-                  <div className="text-sm break-words">
+                <div className="flex flex-col max-w-xs">
+                  <div
+                    className={`p-3 rounded-xl shadow break-words ${
+                      isOwn
+                        ? "bg-blue-600 text-white rounded-br-none"
+                        : "bg-zinc-800 text-zinc-300 rounded-bl-none"
+                    }`}
+                  >
                     {msg.content?.text && <p>{msg.content.text}</p>}
+
                     {msg.content?.image && (
                       <img
                         src={msg.content.image}
                         alt="sent"
-                        className="mt-2 rounded-md max-w-full"
+                        className="mt-2 rounded-md max-w-[200px] max-h-[200px] object-cover"
                       />
                     )}
+
                     {msg.content?.audio && (
-                      <audio controls className="mt-2">
+                      <audio controls className="mt-2 w-full max-w-[250px]">
                         <source src={msg.content.audio} />
                       </audio>
                     )}
                   </div>
+
+                  <p className={`text-[10px] text-zinc-400 mt-1 ${isOwn ? "text-right" : "text-left"}`}>
+                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
                 </div>
 
-                {/* Avatar right (own message) */}
                 {isOwn && (
-                  <img
-                    src={currentUser?.profilePic || "/default-avatar.png"}
-                    alt="your avatar"
-                    className="w-8 h-8 rounded-full ml-2"
-                  />
+                  <div className="flex flex-col items-center">
+                    <img
+                      src={currentUser?.profilePic || "/avatar.png"}
+                      alt="your avatar"
+                      className="w-8 h-8 rounded-full"
+                    />
+                    <span className="text-xs text-zinc-400 mt-1">You</span>
+                  </div>
                 )}
               </div>
             );
