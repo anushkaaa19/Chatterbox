@@ -183,7 +183,10 @@ export const login = async (req, res) => {
       domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
     });
 
-    res.status(200).json({ message: "Logged in successfully", user: { id: user._id, email: user.email } });
+    res.status(200).json({ message: "Logged in successfully", user: { id: user._id, email: user.email
+      ,bio:user.bio, // ✅ ADD THIS
+
+     } });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -269,6 +272,8 @@ export const checkAuth = (req, res) => {
       profilePic: req.user.profilePic,
       createdAt: req.user.createdAt,
       updatedAt: req.user.updatedAt,
+      bio: req.user.bio, // ✅ ADD THIS
+
     });
   } catch (error) {
     console.error("Error in checkAuth controller:", error.message);
@@ -315,6 +320,7 @@ export const googleAuth = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      bio: user.bio, // ✅ ADD THIS
       createdAt: user.createdAt,
     });
   } catch (error) {
