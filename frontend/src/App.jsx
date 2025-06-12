@@ -8,6 +8,7 @@ import LearnPage from "./pages/LearnPage";
 import DemoPage from "./pages/DemoPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import VerifyOtp from "./pages/VerifyOtp";
+import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -64,6 +65,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
         <Route path="/verify-otp" element={!authUser ? <VerifyOtp /> : <Navigate to="/" />} />
         <Route path="/password" element={!authUser ? <ForgotPassword /> : <Navigate to="/" />} />
+        <Route path="/reset-password" element={!authUser ? <ResetPassword /> : <Navigate to="/" />} />
       </Routes>
 
       <Toaster />

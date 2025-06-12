@@ -1,10 +1,13 @@
 import { X } from "lucide-react";
+import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
+import UserProfileModal from "./UserProfileModal";
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, typingUsers } = useChatStore();
   const { onlineUsers } = useAuthStore();
+  const [showProfile, setShowProfile] = useState(false);
 
   if (!selectedUser) {
     return (
@@ -27,44 +30,55 @@ const ChatHeader = () => {
   const isOnline = onlineUsers?.includes(selectedUser._id);
 
   return (
-    <div className="p-2.5 border-b border-base-300">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="avatar relative">
-            <div className="size-10 rounded-full overflow-hidden">
-              <img
-                src={selectedUser.profilePic || "/avatar.png"}
-                alt={selectedUser.fullName || "User avatar"}
-                className="w-10 h-10 object-cover"
-              />
+    <>
+      <div className="p-2.5 border-b border-base-300">
+        <div className="flex items-center justify-between">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => setShowProfile(true)}
+          >
+            <div className="avatar relative">
+              <div className="size-10 rounded-full overflow-hidden">
+                <img
+                  src={selectedUser.profilePic || "/avatar.png"}
+                  alt={selectedUser.fullName || "User avatar"}
+                  className="w-10 h-10 object-cover"
+                />
+              </div>
+              {isOnline && (
+                <span
+                  className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white bg-green-500"
+                  title="Online"
+                />
+              )}
             </div>
-            {/* Online status green dot */}
-            {isOnline && (
-              <span
-                className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white bg-green-500"
-                title="Online"
-              />
-            )}
+
+            <div>
+              <h3 className="font-medium">{selectedUser.fullName || "Unknown User"}</h3>
+              <p className="text-sm text-base-content/70">
+                {isOnline ? "Online" : "Offline"}
+              </p>
+              {isTyping && <p className="text-xs text-blue-500 italic">Typing...</p>}
+            </div>
           </div>
 
-          <div>
-            <h3 className="font-medium">{selectedUser.fullName || "Unknown User"}</h3>
-            <p className="text-sm text-base-content/70">
-              {isOnline ? "Online" : "Offline"}
-            </p>
-            {isTyping && <p className="text-xs text-blue-500 italic">Typing...</p>}
-          </div>
+          <button
+            onClick={() => setSelectedUser(null)}
+            aria-label="Close chat"
+            className="p-1 hover:bg-base-200 rounded"
+          >
+            <X size={20} />
+          </button>
         </div>
-
-        <button
-          onClick={() => setSelectedUser(null)}
-          aria-label="Close chat"
-          className="p-1 hover:bg-base-200 rounded"
-        >
-          <X size={20} />
-        </button>
       </div>
-    </div>
+
+      {showProfile && (
+        <UserProfileModal
+          user={selectedUser}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
+    </>
   );
 };
 

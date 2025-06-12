@@ -8,9 +8,29 @@ export const useGroupStore = create((set, get) => ({
   selectedGroup: null,
   groupMessages: [],
   isGroupLoading: false,
+  socket: null,
 
-  setSelectedGroup: (group) => set({ selectedGroup: group }),
-  setGroupMessages: (messages) => set({ groupMessages: messages }),
+  setSocket: (socket) => set({ socket }),
+
+  setSelectedGroup: (group) => {
+    const socket = useAuthStore.getState().socket;
+    const { selectedGroup } = get();
+
+    // Leave previous group room
+    if (socket && selectedGroup?._id) {
+      socket.emit("leaveGroup", selectedGroup._id);
+    }
+
+    // Join new group room
+    if (socket && group?._id) {
+      socket.emit("joinGroup", group._id);
+    }
+
+    set({ selectedGroup: group });
+  },
+
+  setGroupMessages: (messages) =>
+    set({ groupMessages: Array.isArray(messages) ? messages : [] }),
 
   getGroups: async () => {
     set({ isGroupLoading: true });
@@ -26,16 +46,11 @@ export const useGroupStore = create((set, get) => ({
   createGroup: async (formData) => {
     try {
       const res = await axiosInstance.post("/groups", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
       const data = res.data;
       toast.success("Group created successfully");
-
-      await get().getGroups(); // Refresh after creation
-
+      await get().getGroups();
       return data.group;
     } catch (err) {
       console.error("Create group failed:", err);
@@ -47,7 +62,9 @@ export const useGroupStore = create((set, get) => ({
   getGroupMessages: async (groupId) => {
     try {
       const { data } = await axiosInstance.get(`/groups/${groupId}/messages`);
-      set({ groupMessages: data.messages });
+      set({
+        groupMessages: Array.isArray(data.messages) ? data.messages : [],
+      });
       return data.messages;
     } catch (err) {
       console.error("Error loading group messages", err);
@@ -61,11 +78,15 @@ export const useGroupStore = create((set, get) => ({
         `/groups/${groupId}/messages`,
         messageData
       );
-
       const newMessage = res.data?.message;
 
       set((state) => ({
-        groupMessages: [...state.groupMessages, newMessage],
+        groupMessages: [
+          ...(Array.isArray(state.groupMessages)
+            ? state.groupMessages
+            : []),
+          newMessage,
+        ],
       }));
 
       const socket = useAuthStore.getState().socket;
@@ -82,10 +103,17 @@ export const useGroupStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
+    socket.off("receiveGroupMessage");
+
     socket.on("receiveGroupMessage", ({ groupId: gid, message }) => {
       if (gid === groupId) {
         set((state) => ({
-          groupMessages: [...state.groupMessages, message],
+          groupMessages: [
+            ...(Array.isArray(state.groupMessages)
+              ? state.groupMessages
+              : []),
+            message,
+          ],
         }));
       }
     });
@@ -97,7 +125,4 @@ export const useGroupStore = create((set, get) => ({
       socket.off("receiveGroupMessage");
     }
   },
-
-  socket: null,
-  setSocket: (socket) => set({ socket }),
 }));

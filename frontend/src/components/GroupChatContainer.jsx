@@ -6,26 +6,31 @@ import GroupChatHeader from "./GroupChatHeader";
 
 const GroupChatContainer = () => {
   const bottomRef = useRef(null);
+
   const {
     selectedGroup,
     groupMessages,
     getGroupMessages,
     setGroupMessages,
+    subscribeToGroupMessages,
+    unsubscribeFromGroupMessages,
   } = useGroupStore();
 
   const socket = useAuthStore((state) => state.socket);
   const currentUser = useAuthStore((state) => state.authUser);
   const [loading, setLoading] = useState(false);
 
+  // Fetch group messages on group change
   useEffect(() => {
     const fetchMessages = async () => {
       if (!selectedGroup) return;
       setLoading(true);
       try {
         const messages = await getGroupMessages(selectedGroup._id);
-        setGroupMessages(messages);
+        setGroupMessages(Array.isArray(messages) ? messages : []);
       } catch (error) {
         console.error("Failed to fetch group messages:", error);
+        setGroupMessages([]);
       } finally {
         setLoading(false);
       }
@@ -34,26 +39,24 @@ const GroupChatContainer = () => {
     fetchMessages();
   }, [selectedGroup, getGroupMessages, setGroupMessages]);
 
+  // Subscribe to real-time messages for current group
   useEffect(() => {
-    if (!socket || !selectedGroup) return;
+    if (!selectedGroup?._id) return;
 
-    const handleNewGroupMessage = ({ groupId, message }) => {
-      if (groupId === selectedGroup._id) {
-        setGroupMessages((prev) => [...prev, message]);
-      }
+    subscribeToGroupMessages(selectedGroup._id);
+
+    return () => {
+      unsubscribeFromGroupMessages();
     };
+  }, [selectedGroup?._id]);
 
-    socket.on("receiveGroupMessage", handleNewGroupMessage);
-    return () => socket.off("receiveGroupMessage", handleNewGroupMessage);
-  }, [socket, selectedGroup, setGroupMessages]);
-
+  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [groupMessages]);
 
   const isOwnMessage = (senderId) => {
-    if (!senderId || !currentUser?._id) return false;
-    return senderId.toString() === currentUser._id.toString();
+    return senderId?.toString() === currentUser?._id?.toString();
   };
 
   if (!selectedGroup) {
@@ -83,16 +86,19 @@ const GroupChatContainer = () => {
             <span className="loading loading-spinner loading-md" />
             Loading messages...
           </div>
-        ) : groupMessages.length > 0 ? (
+        ) : Array.isArray(groupMessages) && groupMessages.length > 0 ? (
           groupMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
-
             return (
               <div
                 key={msg._id}
                 className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
               >
-                <div className={`flex items-end ${isOwn ? "flex-row-reverse" : ""} gap-3 max-w-[85%]`}>
+                <div
+                  className={`flex items-end ${
+                    isOwn ? "flex-row-reverse" : ""
+                  } gap-3 max-w-[85%]`}
+                >
                   {/* Avatar */}
                   <div className="avatar">
                     <div className="w-8 rounded-full">
@@ -115,7 +121,11 @@ const GroupChatContainer = () => {
                       </div>
                     )}
                     <div
-                      className={`chat-bubble ${isOwn ? "chat-bubble-primary" : "bg-base-200 text-base-content"}`}
+                      className={`chat-bubble ${
+                        isOwn
+                          ? "chat-bubble-primary"
+                          : "bg-base-200 text-base-content"
+                      }`}
                     >
                       {msg.content?.text && <p>{msg.content.text}</p>}
 
@@ -145,7 +155,9 @@ const GroupChatContainer = () => {
             );
           })
         ) : (
-          <p className="text-center text-base-content opacity-50">No messages yet.</p>
+          <p className="text-center text-base-content opacity-50">
+            No messages yet.
+          </p>
         )}
         <div ref={bottomRef} />
       </div>
