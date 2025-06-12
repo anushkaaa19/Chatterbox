@@ -20,6 +20,7 @@ const GroupChatContainer = () => {
   const socket = useAuthStore((state) => state.socket);
   const currentUser = useAuthStore((state) => state.authUser);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // 🔍 Add search query state
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -43,10 +44,7 @@ const GroupChatContainer = () => {
     if (!selectedGroup?._id) return;
 
     subscribeToGroupMessages(selectedGroup._id);
-
-    return () => {
-      unsubscribeFromGroupMessages();
-    };
+    return () => unsubscribeFromGroupMessages();
   }, [selectedGroup?._id]);
 
   useEffect(() => {
@@ -65,6 +63,10 @@ const GroupChatContainer = () => {
       console.error("Failed to send message:", error);
     }
   };
+
+  const filteredMessages = groupMessages.filter((msg) =>
+    msg.content?.text?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (!selectedGroup) {
     return (
@@ -86,6 +88,17 @@ const GroupChatContainer = () => {
     <div className="flex flex-col flex-1 h-full bg-base-100">
       <GroupChatHeader group={selectedGroup} />
 
+      {/* 🔍 Search Bar */}
+      <div className="px-4 py-2 bg-base-200 border-b border-base-300">
+        <input
+          type="text"
+          placeholder="Search messages..."
+          className="input input-bordered w-full"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
         {loading ? (
@@ -93,8 +106,8 @@ const GroupChatContainer = () => {
             <span className="loading loading-spinner loading-md" />
             Loading messages...
           </div>
-        ) : Array.isArray(groupMessages) && groupMessages.length > 0 ? (
-          groupMessages.map((msg) => {
+        ) : filteredMessages.length > 0 ? (
+          filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
             return (
               <div
@@ -106,7 +119,6 @@ const GroupChatContainer = () => {
                     isOwn ? "flex-row-reverse" : ""
                   } gap-2 max-w-[85%]`}
                 >
-                  {/* Avatar */}
                   {!isOwn && (
                     <div className="avatar mt-1">
                       <div className="w-8 rounded-full">
@@ -117,8 +129,6 @@ const GroupChatContainer = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Message Bubble */}
                   <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
                     {!isOwn && (
                       <div className="text-xs text-base-content opacity-60 mb-1">
@@ -133,7 +143,6 @@ const GroupChatContainer = () => {
                       }`}
                     >
                       {msg.content?.text && <p>{msg.content.text}</p>}
-
                       {msg.content?.image && (
                         <img
                           src={msg.content.image}
@@ -141,7 +150,6 @@ const GroupChatContainer = () => {
                           className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
                         />
                       )}
-
                       {msg.content?.audio && (
                         <audio controls className="mt-1 w-full max-w-xs">
                           <source src={msg.content.audio} />
@@ -161,7 +169,7 @@ const GroupChatContainer = () => {
           })
         ) : (
           <p className="text-center text-base-content opacity-50">
-            No messages yet.
+            No messages found.
           </p>
         )}
         <div ref={bottomRef} />
