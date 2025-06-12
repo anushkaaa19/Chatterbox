@@ -6,6 +6,9 @@ const GroupChatHeader = ({ group }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
+  // Fallback avatar URL
+  const fallbackAvatar = "/avatar.png"; // make sure this file exists in public/
+
   return (
     <>
       <div className="p-4 bg-base-200 border-b border-base-300 flex items-center gap-4 shadow-sm">
@@ -15,7 +18,11 @@ const GroupChatHeader = ({ group }) => {
           onClick={() => setIsEditModalOpen(true)}
         >
           <div className="w-12 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-            <img src={group?.profilePic || "/default-avatar.png"} alt="Group Avatar" />
+            <img
+              src={group?.profilePic?.trim() || fallbackAvatar}
+              alt="Group Avatar"
+              onError={(e) => (e.target.src = fallbackAvatar)}
+            />
           </div>
         </div>
 
@@ -23,7 +30,7 @@ const GroupChatHeader = ({ group }) => {
         <div className="flex flex-col">
           <h2
             className="text-xl font-bold text-primary cursor-pointer hover:underline"
-            onClick={() => setIsInfoModalOpen(true)} // ✅ FIXED HERE
+            onClick={() => setIsInfoModalOpen(true)}
           >
             {group?.name || "Group Chat"}
           </h2>
