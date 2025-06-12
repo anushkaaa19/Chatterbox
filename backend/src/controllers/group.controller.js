@@ -26,8 +26,8 @@ export const createGroup = async (req, res) => {
     });
 
     const populatedGroup = await Group.findById(newGroup._id)
-      .populate("members", "name email profilePic")
-      .populate("admin", "name email profilePic");
+      .populate("members", "fullName email profilePic")
+      .populate("admin", "fullName email profilePic");
 
     res.status(201).json({ success: true, group: populatedGroup });
   } catch (err) {
@@ -42,8 +42,8 @@ export const getUserGroups = async (req, res) => {
     const userId = req.user._id;
 
     const groups = await Group.find({ members: userId })
-      .populate("members", "name email profilePic")
-      .populate("admin", "name email profilePic");
+      .populate("members", "fullName email profilePic")
+      .populate("admin", "fullName email profilePic");
 
     res.status(200).json({ success: true, groups });
   } catch (err) {
@@ -51,6 +51,8 @@ export const getUserGroups = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch groups" });
   }
 };
+
+// ✅ Send a group message
 export const sendGroupMessage = async (req, res) => {
   try {
     const { text, image, audio } = req.body;
@@ -93,7 +95,6 @@ export const sendGroupMessage = async (req, res) => {
 
     await newMessage.populate("sender", "fullName profilePic _id");
 
-    // Broadcast to all group members including the sender
     io.to(groupId).emit("receiveGroupMessage", {
       groupId,
       message: newMessage,
@@ -130,8 +131,8 @@ export const updateGroup = async (req, res) => {
     await group.save();
 
     const updatedGroup = await Group.findById(group._id)
-      .populate("members", "name email profilePic")
-      .populate("admin", "name email profilePic");
+      .populate("members", "fullName email profilePic")
+      .populate("admin", "fullName email profilePic");
 
     res.status(200).json({ success: true, group: updatedGroup });
   } catch (err) {
