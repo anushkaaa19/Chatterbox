@@ -3,6 +3,9 @@ import { axiosInstance } from "../lib/axios";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
+// Global handler reference
+let groupMessageHandler = null;
+
 export const useGroupStore = create((set, get) => ({
   groups: [],
   selectedGroup: null,
@@ -13,17 +16,15 @@ export const useGroupStore = create((set, get) => ({
   setSocket: (socket) => set({ socket }),
 
   setSelectedGroup: (group) => {
-    const socket = useAuthStore.getState().socket;
+    const authSocket = useAuthStore.getState().socket;
     const { selectedGroup } = get();
 
-    // Leave previous group room
-    if (socket && selectedGroup?._id) {
-      socket.emit("leaveGroup", selectedGroup._id);
+    if (authSocket && selectedGroup?._id) {
+      authSocket.emit("leaveGroup", selectedGroup._id);
     }
 
-    // Join new group room
-    if (socket && group?._id) {
-      socket.emit("joinGroup", group._id);
+    if (authSocket && group?._id) {
+      authSocket.emit("joinGroup", group._id);
     }
 
     set({ selectedGroup: group });
@@ -36,7 +37,7 @@ export const useGroupStore = create((set, get) => ({
     set({ isGroupLoading: true });
     try {
       const { data } = await axiosInstance.get("/groups");
-      set({ groups: data.groups, isGroupLoading: false });
+      set({ groups: data.groups || [], isGroupLoading: false });
     } catch (err) {
       console.error("Error fetching groups", err);
       set({ isGroupLoading: false });
@@ -48,10 +49,14 @@ export const useGroupStore = create((set, get) => ({
       const res = await axiosInstance.post("/groups", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      const data = res.data;
+      const group = res.data?.group;
       toast.success("Group created successfully");
-      await get().getGroups();
-      return data.group;
+
+      set((state) => ({
+        groups: [...state.groups, group],
+      }));
+
+      return group;
     } catch (err) {
       console.error("Create group failed:", err);
       toast.error("Failed to create group");
@@ -62,10 +67,9 @@ export const useGroupStore = create((set, get) => ({
   getGroupMessages: async (groupId) => {
     try {
       const { data } = await axiosInstance.get(`/groups/${groupId}/messages`);
-      set({
-        groupMessages: Array.isArray(data.messages) ? data.messages : [],
-      });
-      return data.messages;
+      const messages = data.messages || [];
+      set({ groupMessages: messages });
+      return messages;
     } catch (err) {
       console.error("Error loading group messages", err);
       return [];
@@ -78,51 +82,45 @@ export const useGroupStore = create((set, get) => ({
         `/groups/${groupId}/messages`,
         messageData
       );
-      const newMessage = res.data?.message;
-
-      set((state) => ({
-        groupMessages: [
-          ...(Array.isArray(state.groupMessages)
-            ? state.groupMessages
-            : []),
-          newMessage,
-        ],
-      }));
-
-      const socket = useAuthStore.getState().socket;
-      if (socket) {
-        socket.emit("sendGroupMessage", { groupId, message: newMessage });
-      }
+      return res.data?.message;
+      // Server will handle the socket emission
     } catch (err) {
+      console.error("Error sending message", err);
       toast.error("Failed to send group message");
       throw err;
     }
   },
 
   subscribeToGroupMessages: (groupId) => {
-    const socket = useAuthStore.getState().socket;
-    if (!socket) return;
+    const authSocket = useAuthStore.getState().socket;
+    if (!authSocket) return;
 
-    socket.off("receiveGroupMessage");
+    // Remove old listener if it exists
+    if (groupMessageHandler) {
+      authSocket.off("receiveGroupMessage", groupMessageHandler);
+    }
 
-    socket.on("receiveGroupMessage", ({ groupId: gid, message }) => {
+    // Define a named handler and store globally
+    groupMessageHandler = ({ groupId: gid, message }) => {
       if (gid === groupId) {
-        set((state) => ({
-          groupMessages: [
-            ...(Array.isArray(state.groupMessages)
-              ? state.groupMessages
-              : []),
-            message,
-          ],
-        }));
+        set((state) => {
+          // Check if message already exists to prevent duplicates
+          const exists = state.groupMessages.some(m => m._id === message._id);
+          return exists ? state : {
+            groupMessages: [...(state.groupMessages || []), message],
+          };
+        });
       }
-    });
+    };
+
+    authSocket.on("receiveGroupMessage", groupMessageHandler);
   },
 
   unsubscribeFromGroupMessages: () => {
-    const socket = useAuthStore.getState().socket;
-    if (socket) {
-      socket.off("receiveGroupMessage");
+    const authSocket = useAuthStore.getState().socket;
+    if (authSocket && groupMessageHandler) {
+      authSocket.off("receiveGroupMessage", groupMessageHandler);
+      groupMessageHandler = null;
     }
   },
 }));

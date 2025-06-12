@@ -16,7 +16,6 @@ export const createGroup = async (req, res) => {
       profilePic = uploadRes.secure_url;
     }
 
-    // ✅ Ensure the creator is also in the group
     const uniqueMembers = [...new Set([...parsedMembers, req.user.id])];
 
     const newGroup = await Group.create({
@@ -26,7 +25,11 @@ export const createGroup = async (req, res) => {
       profilePic,
     });
 
-    res.status(201).json({ success: true, group: newGroup });
+    const populatedGroup = await Group.findById(newGroup._id)
+      .populate("members", "name email profilePic")
+      .populate("admin", "name email profilePic");
+
+    res.status(201).json({ success: true, group: populatedGroup });
   } catch (err) {
     console.error("Group creation error:", err);
     res.status(500).json({ success: false, message: "Failed to create group" });
@@ -48,8 +51,6 @@ export const getUserGroups = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch groups" });
   }
 };
-
-// ✅ Send a message to a group
 export const sendGroupMessage = async (req, res) => {
   try {
     const { text, image, audio } = req.body;
@@ -92,6 +93,7 @@ export const sendGroupMessage = async (req, res) => {
 
     await newMessage.populate("sender", "fullName profilePic _id");
 
+    // Broadcast to all group members including the sender
     io.to(groupId).emit("receiveGroupMessage", {
       groupId,
       message: newMessage,
@@ -104,75 +106,81 @@ export const sendGroupMessage = async (req, res) => {
   }
 };
 
+// ✅ Update group (name and/or profile pic)
 export const updateGroup = async (req, res) => {
-    try {
-      const { groupId } = req.params;
-      const { name } = req.body;
-      const userId = req.user._id;
-  
-      const group = await Group.findById(groupId);
-      if (!group) return res.status(404).json({ success: false, message: "Group not found" });
-  
-      // Only group members can edit
-      if (!group.members.includes(userId)) {
-        return res.status(403).json({ success: false, message: "Not authorized" });
-      }
-  
-      if (name) group.name = name;
-  
-      if (req.files?.avatar) {
-        const uploadRes = await uploadToCloudinary(req.files.avatar.tempFilePath, "groups");
-        group.profilePic = uploadRes.secure_url;
-      }
-  
-      await group.save();
-  
-      res.status(200).json({ success: true, group });
-    } catch (err) {
-      console.error("Group update error:", err);
-      res.status(500).json({ success: false, message: "Failed to update group" });
+  try {
+    const { groupId } = req.params;
+    const { name } = req.body;
+    const userId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+
+    if (!group.members.includes(userId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
-  };
-  
-  export const deleteGroup = async (req, res) => {
-    try {
-      const { groupId } = req.params;
-      const userId = req.user._id;
-  
-      const group = await Group.findById(groupId);
-      if (!group) return res.status(404).json({ success: false, message: "Group not found" });
-  
-      // Only admin can delete
-      if (group.admin.toString() !== userId.toString()) {
-        return res.status(403).json({ success: false, message: "Only admin can delete the group" });
-      }
-  
-      await group.deleteOne();
-      res.status(200).json({ success: true, message: "Group deleted" });
-    } catch (err) {
-      console.error("Delete group error:", err);
-      res.status(500).json({ success: false, message: "Failed to delete group" });
+
+    if (name) group.name = name;
+
+    if (req.files?.avatar) {
+      const uploadRes = await uploadToCloudinary(req.files.avatar.tempFilePath, "groups");
+      group.profilePic = uploadRes.secure_url;
     }
-  };
-  
-  export const leaveGroup = async (req, res) => {
-    try {
-      const { groupId } = req.params;
-      const userId = req.user._id;
-  
-      const group = await Group.findById(groupId);
-      if (!group) return res.status(404).json({ success: false, message: "Group not found" });
-  
-      group.members = group.members.filter((id) => id.toString() !== userId.toString());
-  
-      await group.save();
-      res.status(200).json({ success: true, message: "Left the group" });
-    } catch (err) {
-      console.error("Leave group error:", err);
-      res.status(500).json({ success: false, message: "Failed to leave group" });
+
+    await group.save();
+
+    const updatedGroup = await Group.findById(group._id)
+      .populate("members", "name email profilePic")
+      .populate("admin", "name email profilePic");
+
+    res.status(200).json({ success: true, group: updatedGroup });
+  } catch (err) {
+    console.error("Group update error:", err);
+    res.status(500).json({ success: false, message: "Failed to update group" });
+  }
+};
+
+// ✅ Delete group
+export const deleteGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+
+    if (group.admin.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Only admin can delete the group" });
     }
-  };
-// ✅ Fetch all messages in a group
+
+    await group.deleteOne();
+    res.status(200).json({ success: true, message: "Group deleted" });
+  } catch (err) {
+    console.error("Delete group error:", err);
+    res.status(500).json({ success: false, message: "Failed to delete group" });
+  }
+};
+
+// ✅ Leave group
+export const leaveGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+
+    group.members = group.members.filter((id) => id.toString() !== userId.toString());
+
+    await group.save();
+    res.status(200).json({ success: true, message: "Left the group" });
+  } catch (err) {
+    console.error("Leave group error:", err);
+    res.status(500).json({ success: false, message: "Failed to leave group" });
+  }
+};
+
+// ✅ Get all group messages
 export const getGroupMessages = async (req, res) => {
   try {
     const { groupId } = req.params;

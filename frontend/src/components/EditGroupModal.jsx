@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 const EditGroupModal = ({ group, onClose }) => {
   const [name, setName] = useState(group.name);
   const [avatar, setAvatar] = useState(null);
-  const { getGroups } = useGroupStore();
+  const { getGroups, setSelectedGroup } = useGroupStore();
 
   const handleUpdate = async () => {
     const formData = new FormData();
@@ -14,11 +14,14 @@ const EditGroupModal = ({ group, onClose }) => {
     if (avatar) formData.append("avatar", avatar);
 
     try {
-      await axiosInstance.put(`/groups/${group._id}`, formData, {
+      const { data } = await axiosInstance.put(`/groups/${group._id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       toast.success("Group updated");
-      getGroups();
+
+      await getGroups();
+      setSelectedGroup(data.group); // ✅ Update selected group state for immediate UI sync
       onClose();
     } catch {
       toast.error("Failed to update group");
@@ -30,7 +33,9 @@ const EditGroupModal = ({ group, onClose }) => {
     try {
       await axiosInstance.delete(`/groups/${group._id}`);
       toast.success("Group deleted");
-      getGroups();
+
+      await getGroups();
+      setSelectedGroup(null); // ✅ Clear selected group if deleted
       onClose();
     } catch {
       toast.error("Failed to delete group");
@@ -41,7 +46,9 @@ const EditGroupModal = ({ group, onClose }) => {
     try {
       await axiosInstance.post(`/groups/${group._id}/leave`);
       toast.success("You left the group");
-      getGroups();
+
+      await getGroups();
+      setSelectedGroup(null); // ✅ Clear selected group if left
       onClose();
     } catch {
       toast.error("Failed to leave group");

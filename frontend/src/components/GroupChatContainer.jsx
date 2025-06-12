@@ -14,13 +14,13 @@ const GroupChatContainer = () => {
     setGroupMessages,
     subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
+    sendGroupMessage,
   } = useGroupStore();
 
   const socket = useAuthStore((state) => state.socket);
   const currentUser = useAuthStore((state) => state.authUser);
   const [loading, setLoading] = useState(false);
 
-  // Fetch group messages on group change
   useEffect(() => {
     const fetchMessages = async () => {
       if (!selectedGroup) return;
@@ -39,7 +39,6 @@ const GroupChatContainer = () => {
     fetchMessages();
   }, [selectedGroup, getGroupMessages, setGroupMessages]);
 
-  // Subscribe to real-time messages for current group
   useEffect(() => {
     if (!selectedGroup?._id) return;
 
@@ -50,13 +49,21 @@ const GroupChatContainer = () => {
     };
   }, [selectedGroup?._id]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [groupMessages]);
 
   const isOwnMessage = (senderId) => {
     return senderId?.toString() === currentUser?._id?.toString();
+  };
+
+  const handleSendMessage = async (messageData) => {
+    if (!selectedGroup?._id) return;
+    try {
+      await sendGroupMessage(selectedGroup._id, messageData);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   if (!selectedGroup) {
@@ -80,7 +87,7 @@ const GroupChatContainer = () => {
       <GroupChatHeader group={selectedGroup} />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
         {loading ? (
           <div className="text-center text-base-content opacity-50">
             <span className="loading loading-spinner loading-md" />
@@ -92,38 +99,36 @@ const GroupChatContainer = () => {
             return (
               <div
                 key={msg._id}
-                className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2`}
               >
                 <div
-                  className={`flex items-end ${
+                  className={`flex items-start ${
                     isOwn ? "flex-row-reverse" : ""
-                  } gap-3 max-w-[85%]`}
+                  } gap-2 max-w-[85%]`}
                 >
                   {/* Avatar */}
-                  <div className="avatar">
-                    <div className="w-8 rounded-full">
-                      <img
-                        src={
-                          isOwn
-                            ? currentUser?.profilePic || "/avatar.png"
-                            : msg.sender?.profilePic || "/avatar.png"
-                        }
-                        alt="avatar"
-                      />
+                  {!isOwn && (
+                    <div className="avatar mt-1">
+                      <div className="w-8 rounded-full">
+                        <img
+                          src={msg.sender?.profilePic || "/avatar.png"}
+                          alt="avatar"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Message Bubble */}
-                  <div className={`chat ${isOwn ? "chat-end" : "chat-start"}`}>
+                  <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
                     {!isOwn && (
-                      <div className="text-xs text-base-content opacity-60">
+                      <div className="text-xs text-base-content opacity-60 mb-1">
                         {msg.sender?.fullName}
                       </div>
                     )}
                     <div
-                      className={`chat-bubble ${
+                      className={`px-3 py-2 rounded-lg ${
                         isOwn
-                          ? "chat-bubble-primary"
+                          ? "bg-primary text-primary-content"
                           : "bg-base-200 text-base-content"
                       }`}
                     >
@@ -133,12 +138,12 @@ const GroupChatContainer = () => {
                         <img
                           src={msg.content.image}
                           alt="sent"
-                          className="mt-2 rounded-md max-w-xs max-h-48 object-cover"
+                          className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
                         />
                       )}
 
                       {msg.content?.audio && (
-                        <audio controls className="mt-2 w-full max-w-xs">
+                        <audio controls className="mt-1 w-full max-w-xs">
                           <source src={msg.content.audio} />
                         </audio>
                       )}
@@ -162,7 +167,7 @@ const GroupChatContainer = () => {
         <div ref={bottomRef} />
       </div>
 
-      <GroupMessageInput />
+      <GroupMessageInput onSendMessage={handleSendMessage} />
     </div>
   );
 };

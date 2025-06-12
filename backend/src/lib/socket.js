@@ -54,9 +54,10 @@ io.on("connection", (socket) => {
 
   // When message is saved in DB, emit separately
   socket.on("sendGroupMessage", ({ groupId, message }) => {
-    socket.to(groupId).emit("receiveGroupMessage", { groupId, message });
+    // Broadcast to everyone in the group INCLUDING the sender
+    io.to(groupId).emit("receiveGroupMessage", { groupId, message });
   });
-
+  
   socket.on("disconnect", () => {
     if (socket.userId) {
       delete userSocketMap[socket.userId];
