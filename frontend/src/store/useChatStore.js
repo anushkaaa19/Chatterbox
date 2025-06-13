@@ -85,22 +85,19 @@ export const useChatStore = create((set, get) => ({
       set({ isMessagesLoading: false });
     }
   },
-  
   sendMessage: async (messageData) => {
     const selectedUser = get().selectedUser;
     if (!selectedUser) throw new Error("No user selected");
   
     try {
       const formData = new FormData();
-      formData.append("content", messageData.text || "");
+      formData.append("text", messageData.text || ""); // ✅ match backend
   
-      // Handle image upload
       if (messageData.image) {
         const blob = await fetch(messageData.image).then((r) => r.blob());
         formData.append("image", blob, "message-image.png");
       }
   
-      // Handle audio upload
       if (messageData.audio) {
         const blob = await fetch(messageData.audio).then((r) => r.blob());
         formData.append("audio", blob, "message-audio.webm");

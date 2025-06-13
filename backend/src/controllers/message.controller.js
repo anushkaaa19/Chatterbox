@@ -111,14 +111,13 @@ export const getMessages = async (req, res) => {
     console.error("Error in getMessages:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
-export const sendMessages = async (req, res) => {
+};export const sendMessages = async (req, res) => {
   try {
     console.log("Incoming body:", req.body);
     console.log("Incoming files:", req.files);
 
     const { text } = req.body;
-    const senderId = req.user._id; // assuming you have auth middleware setting this
+    const senderId = req.user?._id;
     const receiverId = req.params.id;
 
     if (!senderId || !receiverId) {
@@ -129,7 +128,7 @@ export const sendMessages = async (req, res) => {
     let audioUrl = null;
 
     // Handle image upload
-    if (req.files?.image) {
+    if (req.files?.image?.tempFilePath) {
       try {
         const result = await cloudinary.uploader.upload(req.files.image.tempFilePath, {
           folder: "chat_images",
@@ -142,11 +141,11 @@ export const sendMessages = async (req, res) => {
     }
 
     // Handle audio upload
-    if (req.files?.audio) {
+    if (req.files?.audio?.tempFilePath) {
       try {
         const result = await cloudinary.uploader.upload(req.files.audio.tempFilePath, {
-          resource_type: "video", // Cloudinary treats .webm as video
           folder: "chat_audio",
+          resource_type: "video",
         });
         audioUrl = result.secure_url;
       } catch (err) {
