@@ -276,9 +276,6 @@ export const checkAuth = (req, res) => {
     });
   }
 };
-
-
-// Google OAuth controller
 export const googleAuth = async (req, res) => {
   const { uid, email, displayName, photoURL } = req.body;
 
@@ -293,7 +290,7 @@ export const googleAuth = async (req, res) => {
         fullName: displayName,
         email,
         profilePic: photoURL,
-        password: null, // Mark as Google-authenticated user
+        password: null,
       });
       await user.save();
     }
@@ -304,21 +301,17 @@ export const googleAuth = async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
-      domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
+      // only add domain if you use a real custom domain
+      // domain: ".yourdomain.com",
     });
 
-    res.status(200).json({
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      profilePic: user.profilePic,
-      bio: user.bio, // ✅ ADD THIS
-      createdAt: user.createdAt,
-    });
+    // send full user object so `checkAuth` and state updates correctly
+    res.status(200).json({ user });
   } catch (error) {
     console.error("Google auth error:", error);
     res.status(500).json({ message: "Authentication failed" });
   }
 };
+

@@ -98,21 +98,24 @@ export const useAuthStore = create(
           set({ isCheckingAuth: false });
         }
       },
-
       signInWithGoogle: async () => {
         try {
           const result = await signInWithPopup(auth, provider);
           const user = result.user;
-
+      
           const res = await axiosInstance.post("/auth/google", {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
           });
-
-          await get().checkAuth();
-
+      
+          // set user from returned payload
+          set({ authUser: res.data.user });
+      
+          // connect socket if needed
+          get().connectSocket();
+      
           toast.success("Signed in with Google!");
         } catch (error) {
           await signOut(auth);
@@ -120,9 +123,8 @@ export const useAuthStore = create(
           toast.error(message);
           throw error;
         }
-
-        
       },
+      
 
       signup: async (data) => {
         set({ isSigningUp: true });
