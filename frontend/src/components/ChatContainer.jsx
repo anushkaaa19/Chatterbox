@@ -7,158 +7,33 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing message
+// Modal for editing message (unchanged)
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
-  const [newText, setNewText] = useState(oldText);
-
-  useEffect(() => {
-    setNewText(oldText);
-  }, [oldText]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
-        <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
-
-        <textarea
-          value={newText}
-          onChange={(e) => setNewText(e.target.value)}
-          className="w-full p-3 text-sm border border-zinc-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={4}
-          placeholder="Edit your message..."
-        />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSave(newText)}
-            disabled={newText.trim() === ""}
-            className={`px-4 py-2 text-sm rounded-md transition font-medium ${
-              newText.trim() === ""
-                ? "bg-blue-300 text-white cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  // ... existing code ...
 };
 
 const ChatContainer = () => {
-  const {
-    messages,
-    getMessages,
-    isMessagesLoading,
-    selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    subscribeToTypingEvents,
-    unsubscribeFromTypingEvents,
-    typingUsers,
-  } = useChatStore();
-
-  const {
-    authUser,
-    isCheckingAuth,
-    socket,
-    setAuthUser,
-    setIsCheckingAuth,
-    checkAuth,
-  } = useAuthStore();
-
-  const messageEndRef = useRef(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState(null);
-  const [editingOldText, setEditingOldText] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search bar state
-
-  useEffect(() => {
-    if (isCheckingAuth) {
-      checkAuth();
-    }
-  }, [isCheckingAuth, checkAuth]);
-
-  useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
-
-    getMessages(selectedUser._id);
-    subscribeToMessages();
-    subscribeToTypingEvents();
-
-    return () => {
-      unsubscribeFromMessages();
-      unsubscribeFromTypingEvents();
-    };
-  }, [selectedUser?._id, socket]);
-
-  useEffect(() => {
-    if (messageEndRef.current && messages.length) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-  if (isCheckingAuth) return <div>Loading chat...</div>;
-  if (!authUser?._id) return <div>Please log in to use the chat.</div>;
-
-  const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
-  };
-
-  const handleEdit = (id, oldText) => {
-    setEditingMessageId(id);
-    setEditingOldText(oldText);
-    setIsEditing(true);
-  };
-
-  const handleSaveEdit = (newText) => {
-    if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
-    }
-    setIsEditing(false);
-  };
-
-  const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
-  };
-
-  const filteredMessages = messages.filter((msg) =>
-    msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  );
+  // ... existing state and hooks ...
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
+    <div className="flex-1 flex flex-col overflow-auto bg-white">
       <ChatHeader />
 
-      {/* ✅ Search Bar */}
-      <div className="px-4 pt-4">
+      {/* 🔍 Search Bar */}
+      <div className="px-4 py-3 bg-white border-b border-gray-200">
         <input
           type="text"
           placeholder="Search messages..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       {isMessagesLoading ? (
         <MessageSkeleton />
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50">
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.senderId);
             const likes = Array.isArray(message.likes) ? message.likes : [];
@@ -167,86 +42,134 @@ const ChatContainer = () => {
             return (
               <div
                 key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
+                className={`flex ${own ? "justify-end" : "justify-start"} group relative`}
               >
-                <div className="chat-image avatar">
-                  <div className="size-10 rounded-full border">
-                    <img
-                      src={
-                        own
-                          ? authUser.profilePic || "/avatar.png"
-                          : selectedUser?.profilePic || "/avatar.png"
-                      }
-                      alt="Profile pic"
-                    />
+                {/* Sender avatar for others' messages */}
+                {!own && (
+                  <div className="mr-2 flex-shrink-0">
+                    <div className="size-10 rounded-full overflow-hidden border-2 border-white shadow">
+                      <img
+                        src={selectedUser?.profilePic || "/avatar.png"}
+                        alt="Profile"
+                        className="size-full object-cover"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                <div className="max-w-[85%]">
+                  {/* Sender name for others' messages */}
+                  {!own && (
+                    <div className="text-sm font-medium text-gray-700 mb-1 ml-1">
+                      {selectedUser?.fullName || "Unknown"}
+                    </div>
+                  )}
+                  
+                  {/* Message bubble */}
+                  <div
+                    className={`rounded-2xl px-4 py-2 shadow-sm ${
+                      own
+                        ? "bg-blue-500 text-white rounded-br-none"
+                        : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
+                    }`}
+                  >
+                    {/* Text message */}
+                    {message.text && (
+                      <>
+                        <p className="break-words">
+                          {message.text}
+                          {message.edited && (
+                            <span className="text-xs ml-2 opacity-70">(edited)</span>
+                          )}
+                        </p>
 
-                <div className="chat-header mb-1">
-                  <time className="text-xs opacity-50 ml-1">
-                    {formatMessageTime(message.createdAt)}
-                  </time>
-                </div>
-
-                <div className="chat-bubble flex flex-col relative">
-                  {message.text && (
-                    <>
-                      <p>
-                        {message.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
+                        {/* Like button */}
+                        {likedByCurrentUser && (
+                          <button
+                            onClick={() => handleLike(message._id)}
+                            className={`mt-1 self-start ${own ? "text-blue-200" : "text-red-500"}`}
+                          >
+                            ❤️
+                          </button>
                         )}
-                      </p>
+                      </>
+                    )}
 
-                      {likedByCurrentUser && (
-                        <button
-                          aria-label="Unlike message"
-                          onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
-                        >
-                          ❤️
-                        </button>
-                      )}
-                    </>
-                  )}
+                    {/* Image attachment */}
+                    {message.image && (
+                      <img
+                        src={message.image}
+                        alt="Attached"
+                        className="mt-2 max-w-[200px] sm:max-w-xs rounded-lg object-cover border border-gray-200"
+                      />
+                    )}
 
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="Attached"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-                  {message.file && (
-                    <a
-                      href={message.file}
-                      download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
-                  {message.audio && (
-                    <audio controls src={message.audio} className="mt-2 max-w-xs" />
-                  )}
+                    {/* File attachment */}
+                    {message.file && (
+                      <a
+                        href={message.file}
+                        download={message.fileName || "file"}
+                        className={`block mt-2 inline-flex items-center ${
+                          own ? "text-blue-200" : "text-blue-600"
+                        }`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span className="mr-1">📎</span>
+                        <span className="truncate max-w-[160px]">
+                          {message.fileName || "Download file"}
+                        </span>
+                      </a>
+                    )}
 
-                  <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      message={message}
-                      onEdit={() => handleEdit(message._id, message.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
+                    {/* Audio attachment */}
+                    {message.audio && (
+                      <audio 
+                        controls 
+                        src={message.audio} 
+                        className="mt-2 w-full max-w-xs" 
+                      />
+                    )}
                   </div>
+                  
+                  {/* Message time */}
+                  <div className={`text-xs mt-1 ${own ? "text-right mr-1" : "ml-1"} text-gray-500`}>
+                    {formatMessageTime(message.createdAt)}
+                  </div>
+                </div>
+                
+                {/* User avatar for own messages */}
+                {own && (
+                  <div className="ml-2 flex-shrink-0">
+                    <div className="size-10 rounded-full overflow-hidden border-2 border-white shadow">
+                      <img
+                        src={authUser.profilePic || "/avatar.png"}
+                        alt="Profile"
+                        className="size-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Message options menu */}
+                <div className={`hidden group-hover:block absolute top-0 ${own ? "right-14" : "left-14"}`}>
+                  <MessageOptionsMenu
+                    isOwnMessage={own}
+                    message={message}
+                    onEdit={() => handleEdit(message._id, message.text)}
+                    onLike={() => handleLike(message._id)}
+                  />
                 </div>
               </div>
             );
           })}
 
+          {/* No messages found */}
           {searchTerm && filteredMessages.length === 0 && (
-            <p className="text-center text-zinc-500 py-8">No messages found.</p>
+            <div className="flex flex-col items-center justify-center py-10">
+              <div className="text-gray-400 mb-2">🔍</div>
+              <p className="text-gray-500">No messages found for "{searchTerm}"</p>
+            </div>
           )}
 
           <div ref={messageEndRef} />

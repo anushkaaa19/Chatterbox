@@ -51,12 +51,23 @@ const Sidebar = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Toggle button visible on all screen sizes */}
             <button
               onClick={() => setShowGroups(!showGroups)}
-              className="text-sm text-blue-500 underline hover:text-blue-600 hidden lg:block"
+              className="text-sm text-blue-500 hover:text-blue-600 flex items-center"
+              aria-label={showGroups ? "Show Contacts" : "Show Groups"}
             >
-              {showGroups ? "Contacts" : "Groups"}
+              {/* Text label for medium+ screens */}
+              <span className="hidden md:inline underline">
+                {showGroups ? "Contacts" : "Groups"}
+              </span>
+              
+              {/* Icon for mobile screens */}
+              <span className="md:hidden">
+                {showGroups ? <Users className="size-5" /> : <UsersRound className="size-5" />}
+              </span>
             </button>
+            
             <button 
               onClick={() => setShowMobileSearch(!showMobileSearch)}
               className="md:hidden text-blue-500"
@@ -132,11 +143,11 @@ const Sidebar = () => {
                 setSelectedUser(user);
                 setSelectedGroup(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
+              className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors relative ${
                 selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""
               }`}
             >
-              <div className="relative mx-auto md:mx-0">
+              <div className="relative">
                 <img
                   src={user.profilePic || "/avatar.png"}
                   alt={user.fullName}
@@ -153,9 +164,9 @@ const Sidebar = () => {
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
-              {/* Mobile name display */}
-              <div className="md:hidden absolute left-20 ml-2 text-left min-w-0">
-                <div className="font-medium truncate max-w-[120px]">{user.fullName}</div>
+              {/* Mobile name display - fixed position */}
+              <div className="md:hidden absolute left-16 ml-2 text-left min-w-0">
+                <div className="font-medium truncate max-w-[100px]">{user.fullName}</div>
                 <div className="text-xs text-zinc-400">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
@@ -171,11 +182,11 @@ const Sidebar = () => {
                 setSelectedGroup(group);
                 setSelectedUser(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
+              className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors relative ${
                 selectedGroup?._id === group._id ? "bg-base-300 ring-1 ring-base-300" : ""
               }`}
             >
-              <div className="relative mx-auto md:mx-0">
+              <div className="relative">
                 <img
                   src={group.profilePic || "/avatar.png"}
                   alt={group.name}
@@ -189,9 +200,9 @@ const Sidebar = () => {
                   {group.members.length} members
                 </div>
               </div>
-              {/* Mobile name display */}
-              <div className="md:hidden absolute left-20 ml-2 text-left min-w-0">
-                <div className="font-medium truncate max-w-[120px]">{group.name}</div>
+              {/* Mobile name display - fixed position */}
+              <div className="md:hidden absolute left-16 ml-2 text-left min-w-0">
+                <div className="font-medium truncate max-w-[100px]">{group.name}</div>
                 <div className="text-xs text-zinc-400">
                   {group.members.length} members
                 </div>
