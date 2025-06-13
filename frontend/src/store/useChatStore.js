@@ -86,29 +86,27 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
-
   sendMessage: async (messageData) => {
+    const { selectedUser } = get();
+    if (!selectedUser?._id) {
+      toast.error("No recipient selected");
+      return;
+    }
+  
     try {
-      const { selectedUser } = get();
-      if (!selectedUser || !selectedUser._id) {
-        toast.error("No user selected to send message");
-        return;
-      }
-  
       const formData = new FormData();
+      formData.append("content", messageData.text || "");
   
-      if (messageData.text) {
-        formData.append("text", messageData.text);
-      }
-  
+      // Handle image upload
       if (messageData.image) {
         const blob = await fetch(messageData.image).then(r => r.blob());
-        formData.append("image", blob, "image.png");
+        formData.append("image", blob, "message-image.png");
       }
   
+      // Handle audio upload
       if (messageData.audio) {
         const blob = await fetch(messageData.audio).then(r => r.blob());
-        formData.append("audio", blob, "audio.webm");
+        formData.append("audio", blob, "message-audio.webm");
       }
   
       const res = await axiosInstance.post(
@@ -123,7 +121,11 @@ export const useChatStore = create((set, get) => ({
   
       return res.data;
     } catch (err) {
-      console.error("Error details:", err.response?.data);
+      console.error("Full error:", err);
+      const errorMsg = err.response?.data?.message || 
+                      err.message || 
+                      "Failed to send message";
+      toast.error(errorMsg);
       throw err;
     }
   },

@@ -112,68 +112,58 @@ export const getMessages = async (req, res) => {
   }
 };
 
-// ✅ Send message (text, image, audio) — PDF removed
 export const sendMessages = async (req, res) => {
   try {
-    const { text } = req.body;
+    // Validate required fields
+    if (!req.body.content && !req.files?.image && !req.files?.audio) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Message content or file is required" 
+      });
+    }
+
+    const { content } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
-    const files = req.files || {};
 
-    if (!receiverId) {
-      return res.status(400).json({ success: false, message: "Receiver ID required" });
+    // Process files
+    let imageUrl, audioUrl;
+    
+    if (req.files?.image) {
+      const result = await cloudinary.uploader.upload(req.files.image[0].path, {
+        folder: "message_images"
+      });
+      imageUrl = result.secure_url;
     }
 
-    let imageUrl = null;
-    let audioUrl = null;
-
-    // Handle image upload
-    if (files.image) {
-      const imgUpload = await cloudinary.uploader.upload_stream(
-        { folder: "message_images" },
-        (error, result) => {
-          if (error) throw error;
-          imageUrl = result.secure_url;
-        }
-      ).end(files.image[0].buffer);
+    if (req.files?.audio) {
+      const result = await cloudinary.uploader.upload(req.files.audio[0].path, {
+        folder: "message_audio",
+        resource_type: "auto"
+      });
+      audioUrl = result.secure_url;
     }
 
-    // Handle audio upload
-    if (files.audio) {
-      const audioUpload = await cloudinary.uploader.upload_stream(
-        { folder: "message_audio", resource_type: "auto" },
-        (error, result) => {
-          if (error) throw error;
-          audioUrl = result.secure_url;
-        }
-      ).end(files.audio[0].buffer);
-    }
-
-    const newMessage = new Message({
+    const newMessage = await Message.create({
       senderId,
       receiverId,
-      text: text || "",
+      content,
       image: imageUrl,
-      audio: audioUrl,
+      audio: audioUrl
     });
 
-    await newMessage.save();
-
-    // Socket.io emission logic remains the same
+    // Socket.io emission
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
     }
 
-    res.status(201).json({
-      success: true,
-      message: newMessage
-    });
+    res.status(201).json({ success: true, message: newMessage });
   } catch (error) {
-    console.error("Error in sendMessages:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to send message",
+    console.error("Message send error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error",
       error: process.env.NODE_ENV === "development" ? error.message : undefined
     });
   }
