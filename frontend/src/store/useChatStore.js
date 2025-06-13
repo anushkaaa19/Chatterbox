@@ -84,23 +84,29 @@ export const useChatStore = create((set, get) => ({
     } finally {
       set({ isMessagesLoading: false });
     }
-  },
-  sendMessage: async (messageData) => {
+  },sendMessage: async (messageData) => {
     const selectedUser = get().selectedUser;
     if (!selectedUser) throw new Error("No user selected");
   
     try {
       const formData = new FormData();
-      formData.append("text", messageData.text || ""); // ✅ match backend
+      formData.append("text", messageData.text || "");
+  
+      // Convert data URL to File
+      const dataURLtoFile = async (dataUrl, filename, type) => {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        return new File([blob], filename, { type });
+      };
   
       if (messageData.image) {
-        const blob = await fetch(messageData.image).then((r) => r.blob());
-        formData.append("image", blob, "message-image.png");
+        const imageFile = await dataURLtoFile(messageData.image, "image.png", "image/png");
+        formData.append("image", imageFile);
       }
   
       if (messageData.audio) {
-        const blob = await fetch(messageData.audio).then((r) => r.blob());
-        formData.append("audio", blob, "message-audio.webm");
+        const audioFile = await dataURLtoFile(messageData.audio, "audio.webm", "audio/webm");
+        formData.append("audio", audioFile);
       }
   
       const res = await axiosInstance.post(
@@ -110,19 +116,19 @@ export const useChatStore = create((set, get) => ({
           headers: {
             "Content-Type": "multipart/form-data",
           },
-          withCredentials: true,
         }
       );
   
       return res.data;
     } catch (err) {
       console.error("Full error:", err);
-      const errorMsg =
-        err.response?.data?.message || err.message || "Failed to send message";
+      const errorMsg = err.response?.data?.message ||
+                      err.message ||
+                      "Failed to send message";
       toast.error(errorMsg);
       throw err;
     }
-  },
+  },  
   
   editMessage: async (id, newText) => {
     try {
