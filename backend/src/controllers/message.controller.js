@@ -112,7 +112,7 @@ export const getMessages = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-export const sendMessage = async (req, res) => {
+export const sendMessages = async (req, res) => {
   try {
     console.log("Incoming body:", req.body);
     console.log("Incoming files:", req.files);
