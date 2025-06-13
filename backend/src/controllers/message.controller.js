@@ -113,9 +113,6 @@ export const getMessages = async (req, res) => {
   }
 };export const sendMessages = async (req, res) => {
   try {
-    console.log("BODY:", req.body);
-    console.log("FILES:", req.files);
-
     const { text } = req.body;
     const senderId = req.user._id;
     const receiverId = req.params.id;
@@ -127,43 +124,44 @@ export const getMessages = async (req, res) => {
     let imageUrl = null;
     let audioUrl = null;
 
-    if (req.files?.image) {
-      if (!req.files.image.tempFilePath) {
-        console.error("Image tempFilePath missing");
-        return res.status(500).json({ message: "Image tempFilePath missing" });
-      }
-
-      const result = await cloudinary.uploader.upload(req.files.image.tempFilePath, {
-        folder: "chat_images",
-      });
+    // 🖼 Upload image if exists
+    if (req.files?.image?.tempFilePath) {
+      const result = await cloudinary.uploader.upload(
+        req.files.image.tempFilePath,
+        { folder: "chat_images" }
+      );
       imageUrl = result.secure_url;
     }
 
-    if (req.files?.audio) {
-      if (!req.files.audio.tempFilePath) {
-        console.error("Audio tempFilePath missing");
-        return res.status(500).json({ message: "Audio tempFilePath missing" });
-      }
-
-      const result = await cloudinary.uploader.upload(req.files.audio.tempFilePath, {
-        resource_type: "video",
-        folder: "chat_audio",
-      });
+    // 🔊 Upload audio if exists
+    if (req.files?.audio?.tempFilePath) {
+      const result = await cloudinary.uploader.upload(
+        req.files.audio.tempFilePath,
+        {
+          resource_type: "video",
+          folder: "chat_audio",
+        }
+      );
       audioUrl = result.secure_url;
     }
 
     const message = new Message({
       sender: senderId,
       receiver: receiverId,
-      text,
+      text: text || "",
       image: imageUrl,
       audio: audioUrl,
     });
 
     await message.save();
+
+    // OPTIONAL: Emit via socket.io if needed
+    // const io = req.app.get("io");
+    // io.to(receiverId).emit("newMessage", message);
+
     res.status(201).json({ message: "Message sent", data: message });
   } catch (err) {
-    console.error("SendMessage failed:", err);
+    console.error("Send message failed:", err);
     res.status(500).json({ message: "Internal server error", error: err.message });
   }
 };

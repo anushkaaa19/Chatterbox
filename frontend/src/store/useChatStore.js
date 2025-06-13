@@ -85,48 +85,42 @@ export const useChatStore = create((set, get) => ({
       set({ isMessagesLoading: false });
     }
   },
-  sendMessage: async (messageData) => {
-    const selectedUser = get().selectedUser;
-    if (!selectedUser) throw new Error("No user selected");
+  sendMessage: async (receiverId, messageData) => {
+    if (!receiverId) throw new Error("No user selected");
   
     try {
       const formData = new FormData();
-      formData.append("text", messageData.text || "");
-  
-      const dataURLtoFile = async (dataUrl, filename, mimeType) => {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        return new File([blob], filename, { type: mimeType });
-      };
-  
-      if (messageData.image) {
-        const imageFile = await dataURLtoFile(messageData.image, "image.png", "image/png");
-        formData.append("image", imageFile);
+      if (messageData.text?.trim()) {
+        formData.append("text", messageData.text.trim());
       }
   
-      if (messageData.audio) {
-        const audioFile = await dataURLtoFile(messageData.audio, "audio.webm", "audio/webm");
+      if (messageData.image instanceof File) {
+        formData.append("image", messageData.image);
+      }
+  
+      if (messageData.audio instanceof Blob) {
+        const audioFile = new File([messageData.audio], "audio.webm", { type: "audio/webm" });
         formData.append("audio", audioFile);
       }
   
       const res = await axiosInstance.post(
-        `/messages/chat/${selectedUser._id}`,
+        `/messages/chat/${receiverId}`,
         formData,
         {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
+          withCredentials: true, // if your auth relies on cookies
         }
       );
   
-      return res.data;
+      return res.data.data;
     } catch (err) {
       console.error("Full error:", err);
       const msg = err.response?.data?.message || err.message || "Failed to send message";
       toast.error(msg);
       throw err;
     }
-  },  
+  },
+  
   
   editMessage: async (id, newText) => {
     try {

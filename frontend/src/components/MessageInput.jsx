@@ -158,33 +158,39 @@ const MessageInput = () => {
 
     const handleSendMessage = async (e) => {
       e.preventDefault();
+      if (!selectedUser) {
+        toast.error("No user selected");
+        return;
+      }
+    
       if (!text.trim() && !fileData && !audioBlob) return;
     
       const formData = new FormData();
-      formData.append("text", text.trim());
     
-      // Append image file if selected
-      if (fileInputRef.current?.files[0]) {
-        formData.append("image", fileInputRef.current.files[0]);
-      }
+      if (text.trim()) formData.append("text", text.trim());
     
-      // Append audio blob if recorded
+      const imageFile = fileInputRef.current?.files[0];
+      if (imageFile) formData.append("image", imageFile);
+    
       if (audioBlob) {
-        formData.append("audio", audioBlob, "recording.webm");
+        const audioFile = new File([audioBlob], "audio.webm", { type: "audio/webm" });
+        formData.append("audio", audioFile);
       }
     
       try {
-        await sendMessage(formData); // You now send FormData
+        await sendMessage(selectedUser._id, formData);
         setText("");
-        removeFile();
-        removeAudio();
+        setFilePreview(null);
+        setFileData(null);
+        setAudioBlob(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       } catch (error) {
         console.error("Failed to send message:", error);
         toast.error("Failed to send message");
       }
     };
     
-
+    
   return (
     <div className="p-4 w-full">
       {/* File Preview */}
