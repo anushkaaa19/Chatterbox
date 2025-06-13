@@ -1,31 +1,20 @@
 import express from "express";
-import multer from "multer";
-import protectRoute from "../middlewares/auth.middlewares.js";
-import {
-  getUsersForSidebar,
-  sendMessages,
-  getMessages,
-  editMessage,
-  toggleLike,
-} from "../controllers/message.controller.js";
+import  protectRoute  from "../middlewares/auth.middlewares.js";
+import { getUsersForSidebar , sendMessages , getMessages} from "../controllers/message.controller.js";
+import { editMessage, toggleLike } from "../controllers/message.controller.js";
+
 
 const router = express.Router();
 
-// Use memory storage for multer
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-router.put("/edit/:messageId", protectRoute, editMessage);
-router.post("/like/:messageId", protectRoute, toggleLike);
+router.put("/edit/:id", protectRoute, editMessage);
+router.post("/like/:id", protectRoute, toggleLike);
+// Get users for sidebar (excluding current user)
 router.get("/users", protectRoute, getUsersForSidebar);
+router.get("/:id",protectRoute,getMessages);
+router.post("/send/:id",protectRoute,sendMessages);
 
-// Use upload.fields for image/audio
-router.get("/chat/:id", protectRoute, getMessages);
-router.post(
-  "/chat/:id",
-  protectRoute,
-  upload.fields([{ name: "image" }, { name: "audio" }]),
-  sendMessages
-);
+// Additional message routes can be added here:
+// router.post("/send", protectRoute, sendMessage);
+// router.get("/:userId", protectRoute, getMessages);
 
 export default router;

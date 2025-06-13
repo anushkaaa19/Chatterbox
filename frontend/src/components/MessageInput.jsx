@@ -1,15 +1,15 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useEffect } from "react";
+import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
-import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
-  const [filePreview, setFilePreview] = useState(null);
-  const [fileData, setFileData] = useState(null);
-  const [audioBlob, setAudioBlob] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
   const [isRecognizing, setIsRecognizing] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -17,21 +17,25 @@ const MessageInput = () => {
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
 
+  const { sendMessage } = useChatStore();
+
+  // -------- Image Handling --------
   const socket = useAuthStore((state) => state.socket);
   const authUser = useAuthStore((state) => state.authUser);
   const selectedUser = useChatStore((state) => state.selectedUser);
-  const { sendMessage } = useChatStore();
+
 
   useEffect(() => {
     if (!socket || !authUser || !selectedUser) return;
-
+  
     let typingTimeout;
+  
     if (text.trim()) {
       socket.emit("typing", {
         fromUserId: authUser._id,
         toUserId: selectedUser._id,
       });
-
+  
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
         socket.emit("stopTyping", {
@@ -45,33 +49,27 @@ const MessageInput = () => {
         toUserId: selectedUser._id,
       });
     }
-
+  
     return () => clearTimeout(typingTimeout);
   }, [text, socket, authUser, selectedUser]);
-
-  const handleFileChange = (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
+    if (!file) return; // No file selected
     if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are allowed");
+      toast.error("Please select an image file");
       return;
     }
-
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setFilePreview(reader.result);
-      setFileData(reader.result);
-    };
+    reader.onloadend = () => setImagePreview(reader.result);
     reader.readAsDataURL(file);
   };
 
-  const removeFile = () => {
-    setFilePreview(null);
-    setFileData(null);
+  const removeImage = () => {
+    setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // -------- Audio Recording --------
   const toggleAudioRecording = async () => {
     if (isRecordingAudio) {
       mediaRecorderRef.current.stop();
@@ -89,7 +87,7 @@ const MessageInput = () => {
         mediaRecorderRef.current.onstop = () => {
           const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
           setAudioBlob(blob);
-          stream.getTracks().forEach((track) => track.stop());
+          stream.getTracks().forEach((track) => track.stop()); // Stop mic stream after recording
         };
 
         mediaRecorderRef.current.start();
@@ -104,6 +102,7 @@ const MessageInput = () => {
     setAudioBlob(null);
   };
 
+  // -------- Voice-to-text (Speech Recognition) --------
   const toggleSpeechRecognition = () => {
     if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
       toast.error("Speech recognition not supported in this browser");
@@ -149,6 +148,7 @@ const MessageInput = () => {
     }
   };
 
+  // Helper to convert blob to base64 string
   const blobToDataURL = (blob) =>
     new Promise((resolve) => {
       const reader = new FileReader();
@@ -156,69 +156,64 @@ const MessageInput = () => {
       reader.readAsDataURL(blob);
     });
 
-    const handleSendMessage = async (e) => {
-      e.preventDefault();
-      if (!selectedUser) {
-        toast.error("No user selected");
-        return;
-      }
-    
-      if (!text.trim() && !fileData && !audioBlob) return;
-    
-      const formData = new FormData();
-    
-      if (text.trim()) formData.append("text", text.trim());
-    
-      const imageFile = fileInputRef.current?.files[0];
-      if (imageFile) formData.append("image", imageFile);
-    
-      if (audioBlob) {
-        const audioFile = new File([audioBlob], "audio.webm", { type: "audio/webm" });
-        formData.append("audio", audioFile);
-      }
-    
-      try {
-        await sendMessage(selectedUser._id, formData);
-        setText("");
-        setFilePreview(null);
-        setFileData(null);
-        setAudioBlob(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        toast.error("Failed to send message");
-      }
-    };
-    
-    
+  // -------- Send Message --------
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!text.trim() && !imagePreview && !audioBlob) return;
+
+    let audioDataUrl = null;
+    if (audioBlob) {
+      audioDataUrl = await blobToDataURL(audioBlob);
+    }
+
+    try {
+      await sendMessage({
+        text: text.trim(),
+        image: imagePreview,
+        audio: audioDataUrl,
+      });
+
+      // Reset all inputs after sending
+      setText("");
+      setImagePreview(null);
+      setAudioBlob(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
+    }
+  };
+
   return (
     <div className="p-4 w-full">
-      {/* File Preview */}
-      {filePreview && (
-        <div className="mb-3 relative w-fit">
-          <img
-            src={filePreview}
-            alt="Preview"
-            className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
-          />
-          <button
-            onClick={removeFile}
-            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
-            type="button"
-            aria-label="Remove file"
-          >
-            <X className="size-3" />
-          </button>
+      {/* Image preview */}
+      {imagePreview && (
+        <div className="mb-3 flex items-center gap-2">
+          <div className="relative">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+            />
+            <button
+              onClick={removeImage}
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
+              type="button"
+              aria-label="Remove image"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Audio Preview */}
+      {/* Audio playback */}
       {audioBlob && (
         <div className="mb-3 flex items-center gap-2">
           <audio controls src={URL.createObjectURL(audioBlob)} />
           <button
             onClick={removeAudio}
-            className="btn btn-sm btn-circle"
+            className="btn btn-sm btn-circle ml-2"
             type="button"
             aria-label="Remove audio"
           >
@@ -231,8 +226,8 @@ const MessageInput = () => {
         <div className="flex-1 flex gap-2">
           <input
             type="text"
-            placeholder="Type a message..."
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
+            placeholder="Type a message..."
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={isRecordingAudio}
@@ -241,48 +236,53 @@ const MessageInput = () => {
           <input
             type="file"
             accept="image/*"
-            ref={fileInputRef}
-            onChange={handleFileChange}
             className="hidden"
+            ref={fileInputRef}
+            onChange={handleImageChange}
             disabled={isRecordingAudio}
           />
 
           <button
             type="button"
-            className={`btn btn-circle ${filePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            className={`btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
             disabled={isRecordingAudio}
-            aria-label="Attach file"
+            title="Upload Image"
           >
             <Image size={20} />
           </button>
         </div>
 
+        {/* Voice to Text button */}
         <button
           type="button"
           className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
           onClick={toggleSpeechRecognition}
+          title={isRecognizing ? "Stop Voice to Text" : "Start Voice to Text"}
           disabled={isRecordingAudio}
-          aria-label="Toggle speech-to-text"
+          aria-pressed={isRecognizing}
         >
           <MessageCircle size={24} />
         </button>
 
+        {/* Audio Record button */}
         <button
           type="button"
           className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
           onClick={toggleAudioRecording}
+          title={isRecordingAudio ? "Stop Recording" : "Record Audio"}
           disabled={isRecognizing}
-          aria-label="Toggle voice recording"
+          aria-pressed={isRecordingAudio}
         >
           {isRecordingAudio ? <StopCircle size={24} /> : <Mic size={24} />}
         </button>
 
+        {/* Send button */}
         <button
           type="submit"
           className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !fileData && !audioBlob}
-          aria-label="Send message"
+          disabled={!text.trim() && !imagePreview && !audioBlob}
+          title="Send Message"
         >
           <Send size={22} />
         </button>

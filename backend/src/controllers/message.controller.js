@@ -2,46 +2,40 @@ import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
-import streamifier from "streamifier";
 
-// Utility for streaming buffer to Cloudinary
-const streamUpload = (buffer, folder, resourceType = "auto") => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: resourceType },
-      (error, result) => {
-        if (result) resolve(result);
-        else reject(error);
-      }
-    );
-    streamifier.createReadStream(buffer).pipe(stream);
-  });
-};
-
+// ✅ Get users for sidebar
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
+
     const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
     res.status(200).json({
       success: true,
       users: filteredUsers,
-      count: filteredUsers.length,
+      count: filteredUsers.length
     });
   } catch (error) {
     console.error("Error in getUsersForSidebar:", error.message);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
+// ✅ Edit a message
 export const editMessage = async (req, res) => {
-  const { messageId } = req.params;
+  const { id } = req.params;
   const { newText } = req.body;
   const userId = req.user._id;
 
   try {
-    const message = await Message.findById(messageId);
-    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    const message = await Message.findById(id);
+    if (!message) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
 
     if (message.senderId.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
@@ -51,24 +45,22 @@ export const editMessage = async (req, res) => {
     message.edited = true;
     await message.save();
 
-    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("editedMessage", message);
-    }
-
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// ✅ Toggle like/unlike
 export const toggleLike = async (req, res) => {
-  const { messageId } = req.params;
+  const { id } = req.params;
   const userId = req.user._id;
 
   try {
-    const message = await Message.findById(messageId);
-    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    const message = await Message.findById(id);
+    if (!message) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
 
     const index = message.likes.indexOf(userId);
     if (index === -1) {
@@ -78,90 +70,111 @@ export const toggleLike = async (req, res) => {
     }
 
     await message.save();
-
-    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("likedMessage", message);
-    }
-
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// ✅ Get messages between two users
 export const getMessages = async (req, res) => {
   try {
-    const {id: userToChatId } = req.params;
+    const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
     if (!userToChatId) {
-      return res.status(400).json({ success: false, message: "User ID is required" });
+      return res.status(400).json({
+        success: false,
+        message: "User ID parameter is required"
+      });
     }
 
     const messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId },
-      ],
+        { senderId: userToChatId, receiverId: myId }
+      ]
     }).sort({ createdAt: 1 });
 
-    res.status(200).json({ success: true, messages, count: messages.length });
+    res.status(200).json({
+      success: true,
+      messages,
+      count: messages.length
+    });
   } catch (error) {
-    console.error("Error in getMessages:", error.message);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    console.error("Error in getMessages controller:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error",
+      message: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
   }
-};export const sendMessages = async (req, res) => {
+};
+
+// ✅ Send message (text/image/audio)
+export const sendMessages = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, image, audio } = req.body;
+    const { id: receiverId } = req.params;
     const senderId = req.user._id;
-    const receiverId = req.params.id;
 
-    if (!senderId || !receiverId) {
-      return res.status(400).json({ message: "Sender or receiver missing" });
+    if (!receiverId) {
+      return res.status(400).json({ success: false, message: "Receiver ID required" });
     }
 
-    let imageUrl = null;
-    let audioUrl = null;
+    let imageUrl, audioUrl;
 
-    // 🖼 Upload image if exists
-    if (req.files?.image?.tempFilePath) {
-      const result = await cloudinary.uploader.upload(
-        req.files.image.tempFilePath,
-        { folder: "chat_images" }
-      );
-      imageUrl = result.secure_url;
+    // Upload image if exists
+    if (image) {
+      const imgUpload = await cloudinary.uploader.upload(image, {
+        folder: "message_images",
+        resource_type: "auto"
+      });
+      imageUrl = imgUpload.secure_url;
     }
 
-    // 🔊 Upload audio if exists
-    if (req.files?.audio?.tempFilePath) {
-      const result = await cloudinary.uploader.upload(
-        req.files.audio.tempFilePath,
-        {
-          resource_type: "video",
-          folder: "chat_audio",
-        }
-      );
-      audioUrl = result.secure_url;
+    // Upload audio if exists
+    if (audio) {
+      const audioUpload = await cloudinary.uploader.upload(audio, {
+        folder: "message_audio",
+        resource_type: "auto"
+      });
+      audioUrl = audioUpload.secure_url;
     }
 
-    const message = new Message({
-      sender: senderId,
-      receiver: receiverId,
+    const newMessage = new Message({
+      senderId,
+      receiverId,
       text: text || "",
       image: imageUrl,
-      audio: audioUrl,
+      audio: audioUrl
     });
 
-    await message.save();
+    await newMessage.save();
 
-    // OPTIONAL: Emit via socket.io if needed
-    // const io = req.app.get("io");
-    // io.to(receiverId).emit("newMessage", message);
+    // Send real-time notification
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
 
-    res.status(201).json({ message: "Message sent", data: message });
-  } catch (err) {
-    console.error("Send message failed:", err);
-    res.status(500).json({ message: "Internal server error", error: err.message });
+    res.status(201).json({
+      success: true,
+      message: {
+        _id: newMessage._id,
+        senderId,
+        receiverId,
+        text: newMessage.text,
+        image: newMessage.image,
+        audio: newMessage.audio,
+        createdAt: newMessage.createdAt
+      }
+    });
+  } catch (error) {
+    console.error("Error in sendMessages controller:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
   }
 };
