@@ -148,7 +148,13 @@ export const useAuthStore = create(
         set({ isLoggingIn: true });
         try {
           const res = await axiosInstance.post("/auth/login", data);
-          await get().checkAuth();
+          await axiosInstance.post("/auth/login", data);
+
+// wait for cookie to actually get set
+setTimeout(async () => {
+  await get().checkAuth(); // <- call this after delay
+}, 300); // or 500ms
+
 
           toast.success("Logged in successfully");
           return true;
