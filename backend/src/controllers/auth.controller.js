@@ -140,7 +140,7 @@ export const signup = async (req, res) => {
     // Set cookie
     res.cookie("jwt", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "None",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
@@ -175,8 +175,8 @@ export const login = async (req, res) => {
 
     res.cookie("jwt", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "None",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
       domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
@@ -198,7 +198,7 @@ export const logout = (req, res) => {
     res.cookie("jwt", "", {
       maxAge: 0,
       httpOnly: true,
-      sameSite: "strict",
+      sameSite: "None",
       secure: process.env.NODE_ENV === "production",
     });
     res.status(200).json({ message: "Logged out successfully" });
@@ -307,8 +307,8 @@ export const googleAuth = async (req, res) => {
 
     res.cookie("jwt", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "None",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
       domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
