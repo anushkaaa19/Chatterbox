@@ -177,10 +177,9 @@ const ChatContainer = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(searchTerm ? filteredMessages : messages).map((message) => {
             console.log("📨 Rendering message:", message);
-
             const hasContent =
-              message.text || message.image || message.file || message.audio;
-
+            message.content?.text || message.content?.image || message.content?.file || message.content?.audio;
+          
             if (!hasContent) {
               console.warn("⚠️ Message has no content:", message);
               return null;
@@ -215,48 +214,48 @@ const ChatContainer = () => {
                 </div>
 
                 <div className="chat-bubble flex flex-col relative">
-                  {message.text && (
-                    <>
-                      <p>
-                        {message.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
+                {message.content?.text && (
+  <>
+    <p>
+      {message.content.text}
+      {message.edited && (
+        <span className="text-xs ml-2">(edited)</span>
+      )}
+    </p>
 
-                      {likedByCurrentUser && (
-                        <button
-                          aria-label="Unlike message"
-                          onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
-                        >
-                          ❤️
-                        </button>
-                      )}
-                    </>
-                  )}
+    {likedByCurrentUser && (
+      <button
+        aria-label="Unlike message"
+        onClick={() => handleLike(message._id)}
+        className="mt-1 text-red-500 self-start"
+      >
+        ❤️
+      </button>
+    )}
+  </>
+)}
 
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="Attached"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-                  {message.file && (
-                    <a
-                      href={message.file}
-                      download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
-                  {message.audio && (
-                    <audio controls src={message.audio} className="mt-2 max-w-xs" />
-                  )}
+{message.content?.image && (
+  <img
+    src={message.content.image}
+    alt="Attached"
+    className="mt-2 max-w-xs rounded-lg border object-cover"
+/>
+)}
+{message.content?.file && (
+  <a
+    href={message.content.file}
+    download={message.fileName || "file"}
+    className="block mt-2 underline text-blue-600"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    📎 {message.fileName || "Download file"}
+  </a>
+)}
+{message.content?.audio && (
+  <audio controls src={message.content.audio} className="mt-2 max-w-xs" />
+)}
 
                   <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
                     <MessageOptionsMenu

@@ -141,11 +141,11 @@ const Sidebar = () => {
                 setSelectedUser(user);
                 setSelectedGroup(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 transition-colors ${
+              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
                 selectedUser?._id === user._id ? "bg-base-200" : "hover:bg-base-200"
               }`}
             >
-              <div className="relative shrink-0">
+              <div className="relative">
                 <img
                   src={user.profilePic || "/avatar.png"}
                   alt={user.fullName}
@@ -155,7 +155,7 @@ const Sidebar = () => {
                   <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-base-100" />
                 )}
               </div>
-              <div className="flex flex-col overflow-hidden">
+              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
                 <div className="font-medium truncate">{user.fullName}</div>
                 <div className="text-xs opacity-60">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
@@ -172,18 +172,18 @@ const Sidebar = () => {
                 setSelectedGroup(group);
                 setSelectedUser(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 transition-colors ${
+              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
                 selectedGroup?._id === group._id ? "bg-base-200" : "hover:bg-base-200"
               }`}
             >
-              <div className="relative shrink-0">
+              <div className="relative">
                 <img
                   src={group.profilePic || "/avatar.png"}
                   alt={group.name}
                   className="size-12 object-cover rounded-full border border-base-300 shadow"
                 />
               </div>
-              <div className="flex flex-col overflow-hidden">
+              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
                 <div className="font-medium truncate">{group.name}</div>
                 <div className="text-xs opacity-60">
                   {group.members.length} members
@@ -213,4 +213,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-
