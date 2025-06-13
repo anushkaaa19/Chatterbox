@@ -112,13 +112,10 @@ const ChatContainer = () => {
   if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
   const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
+    const sender = typeof senderId === "object" ? senderId?._id : senderId;
+    return sender?.toString() === authUser?._id?.toString();
   };
-
+  
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
     setEditingOldText(oldText);
