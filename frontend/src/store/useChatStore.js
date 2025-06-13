@@ -64,7 +64,7 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (userId) => {
     set({ isMessagesLoading: true });
     try {
-      const res = await axiosInstance.get(`/messages/${userId}`);
+      const res = await axiosInstance.get(`/messages/chat/${userId}`);
       const data = res.data?.messages ?? res.data;
       set({ messages: Array.isArray(data) ? data : [] });
     } catch (err) {
@@ -86,7 +86,7 @@ export const useChatStore = create((set, get) => ({
 
     try {
       const res = await axiosInstance.post(
-        `/messages/send/${selectedUser._id}`,
+        `/messages/chat/${selectedUser._id}`,
         messageData
       );
       const newMsg = res.data?.message ?? res.data;

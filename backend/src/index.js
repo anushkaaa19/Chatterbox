@@ -28,15 +28,16 @@ app.use(fileUpload({
     tempFileDir: "/tmp/",
   }));
 
-  try {
-    app.use('/api/groups', groupRoutes);
-  } catch (err) {
-    console.error("Group route error:", err);
-  }
-  
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+try {
+  app.use('/api/groups', groupRoutes);
+} catch (err) {
+  console.error("Group route error:", err);
+}
+
 
 if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "../frontend/build")));
