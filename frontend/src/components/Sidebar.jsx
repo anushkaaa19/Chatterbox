@@ -155,7 +155,8 @@ const Sidebar = () => {
                   <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-base-100" />
                 )}
               </div>
-              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
+              {/* Name and status always visible */}
+              <div className="ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
                 <div className="font-medium truncate">{user.fullName}</div>
                 <div className="text-xs opacity-60">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
@@ -183,7 +184,8 @@ const Sidebar = () => {
                   className="size-12 object-cover rounded-full border border-base-300 shadow"
                 />
               </div>
-              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
+              {/* Name and member count always visible */}
+              <div className="ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
                 <div className="font-medium truncate">{group.name}</div>
                 <div className="text-xs opacity-60">
                   {group.members.length} members
