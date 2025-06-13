@@ -112,9 +112,6 @@ export const getMessages = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-import { v2 as cloudinary } from "cloudinary";
-import Message from "../models/messageModel.js"; // or whatever your model file is
-
 export const sendMessage = async (req, res) => {
   try {
     console.log("Incoming body:", req.body);
