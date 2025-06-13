@@ -10,12 +10,13 @@ import {
 
 const router = express.Router();
 
-router.put("/edit/:id", protectRoute, editMessage);
-router.post("/like/:id", protectRoute, toggleLike);
+// Make parameters explicitly named and optional if needed
+router.put("/edit/:messageId", protectRoute, editMessage);  // ✅ More explicit
+router.post("/like/:messageId", protectRoute, toggleLike);  // ✅ More explicit
 router.get("/users", protectRoute, getUsersForSidebar);
 
 // ✅ Use /chat/:id to avoid collision with /groups/:groupId/messages
-router.get("/chat/:id", protectRoute, getMessages);
-router.post("/chat/:id", protectRoute, sendMessages);
+router.get("/chat/:messageId", protectRoute, getMessages);
+router.post("/chat/:messageId", protectRoute, sendMessages);
 
 export default router;

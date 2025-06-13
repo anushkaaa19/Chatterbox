@@ -28,7 +28,18 @@ app.use(fileUpload({
     tempFileDir: "/tmp/",
   }));
 
-
+// Add this right after your middleware setup
+app.use((req, res, next) => {
+  try {
+    next();
+  } catch (err) {
+    if (err.message.includes('Missing parameter name')) {
+      console.error('Invalid route detected:', req.path);
+      return res.status(400).json({ error: 'Invalid route configuration' });
+    }
+    next(err);
+  }
+});
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
