@@ -100,11 +100,13 @@ if (process.env.NODE_ENV === "production") {
     });
   }
 // Global error handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send({ message: "Something went wrong!" });
+app.use((req, res, next) => {
+  if (req.path.includes(':/')) {
+    console.error('❌ Invalid dynamic route:', req.path);
+    return res.status(400).send('Invalid route path');
+  }
+  next();
 });
-
 
 
 // Connect to DB and then start the server
