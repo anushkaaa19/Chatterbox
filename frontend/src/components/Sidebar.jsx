@@ -39,46 +39,46 @@ const Sidebar = () => {
   if (isUsersLoading || isGroupLoading) return <SidebarSkeleton />;
 
   return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
-      {/* 🔼 Header */}
-      <div className="border-b border-base-300 w-full p-5">
+    <aside className="h-full w-full sm:w-64 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
+      {/* Header */}
+      <div className="border-b border-base-300 w-full p-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            {showGroups ? <UsersRound className="size-6" /> : <Users className="size-6" />}
-            <span className="font-medium hidden lg:block">
+            {showGroups ? <UsersRound className="size-5 lg:size-6" /> : <Users className="size-5 lg:size-6" />}
+            <span className="font-medium text-sm lg:text-base">
               {showGroups ? "Groups" : "Contacts"}
             </span>
           </div>
           <button
             onClick={() => setShowGroups(!showGroups)}
-            className="text-sm text-blue-500 underline hover:text-blue-600"
+            className="text-xs lg:text-sm text-blue-500 hover:text-blue-600"
           >
             {showGroups ? "Contacts" : "Groups"}
           </button>
         </div>
 
-        {/* 🔍 Search */}
-        <div className="mt-3 hidden lg:block">
+        {/* Search */}
+        <div className="mt-3">
           <input
             type="text"
             placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-md border border-base-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-1.5 text-xs lg:text-sm rounded-md border border-base-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
-        {/* ✅ Online Filter */}
+        {/* Online Filter */}
         {!showGroups && (
-          <div className="mt-3 hidden lg:flex items-center gap-2">
-            <label className="cursor-pointer flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2">
+            <label className="cursor-pointer flex items-center gap-1">
               <input
                 type="checkbox"
                 checked={showOnlineOnly}
                 onChange={(e) => setShowOnlineOnly(e.target.checked)}
-                className="checkbox checkbox-sm"
+                className="checkbox checkbox-xs lg:checkbox-sm"
               />
-              <span className="text-sm">Show online only</span>
+              <span className="text-xs lg:text-sm">Online only</span>
             </label>
             <span className="text-xs text-zinc-500">
               ({Math.max(0, onlineUsers.length - 1)} online)
@@ -86,22 +86,22 @@ const Sidebar = () => {
           </div>
         )}
 
-        {/* ➕ Create Group */}
+        {/* Create Group Button */}
         {showGroups && (
-          <div className="mt-3">
+          <div className="mt-2">
             <button
-  onClick={() => setShowCreateGroupModal(true)}
-  className="btn btn-primary w-full flex items-center gap-2"
->
-  <Plus className="size-4" />
-  <span className="hidden lg:block">Create Group</span>
-</button>
+              onClick={() => setShowCreateGroupModal(true)}
+              className="btn btn-primary btn-sm lg:btn-md w-full flex items-center gap-1"
+            >
+              <Plus className="size-3 lg:size-4" />
+              <span>Create Group</span>
+            </button>
           </div>
         )}
       </div>
 
-      {/* 👥 Contact or Group List */}
-      <div className="overflow-y-auto w-full py-3">
+      {/* Contact or Group List */}
+      <div className="overflow-y-auto w-full py-2">
         {!showGroups &&
           filteredUsers.map((user) => (
             <button
@@ -110,23 +110,25 @@ const Sidebar = () => {
                 setSelectedUser(user);
                 setSelectedGroup(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
-                selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""
+              className={`w-full p-2 flex items-center gap-2 hover:bg-base-300 transition-colors ${
+                selectedUser?._id === user._id ? "bg-base-300" : ""
               }`}
             >
-              <div className="relative mx-auto lg:mx-0">
+              <div className="relative">
                 <img
                   src={user.profilePic || "/avatar.png"}
                   alt={user.fullName}
-                  className="size-12 object-cover rounded-full"
+                  className="size-8 lg:size-10 object-cover rounded-full"
                 />
                 {onlineUsers.includes(user._id) && (
-                  <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-zinc-900" />
+                  <span className="absolute bottom-0 right-0 size-2 lg:size-3 bg-green-500 rounded-full ring-1 lg:ring-2 ring-zinc-900" />
                 )}
               </div>
-              <div className="hidden lg:block text-left min-w-0">
-                <div className="font-medium truncate">{user.fullName}</div>
-                <div className="text-sm text-zinc-400">
+              <div className="text-left min-w-0 overflow-hidden">
+                <div className="font-medium truncate text-xs lg:text-sm">
+                  {user.fullName}
+                </div>
+                <div className="text-xs text-zinc-400">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
@@ -141,20 +143,22 @@ const Sidebar = () => {
                 setSelectedGroup(group);
                 setSelectedUser(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
-                selectedGroup?._id === group._id ? "bg-base-300 ring-1 ring-base-300" : ""
+              className={`w-full p-2 flex items-center gap-2 hover:bg-base-300 transition-colors ${
+                selectedGroup?._id === group._id ? "bg-base-300" : ""
               }`}
             >
-              <div className="relative mx-auto lg:mx-0">
+              <div className="relative">
                 <img
                   src={group.profilePic || "/avatar.png"}
                   alt={group.name}
-                  className="size-12 object-cover rounded-full"
+                  className="size-8 lg:size-10 object-cover rounded-full"
                 />
               </div>
-              <div className="hidden lg:block text-left min-w-0">
-                <div className="font-medium truncate">{group.name}</div>
-                <div className="text-sm text-zinc-400">
+              <div className="text-left min-w-0 overflow-hidden">
+                <div className="font-medium truncate text-xs lg:text-sm">
+                  {group.name}
+                </div>
+                <div className="text-xs text-zinc-400">
                   {group.members.length} members
                 </div>
               </div>
@@ -162,18 +166,18 @@ const Sidebar = () => {
           ))}
 
         {!showGroups && filteredUsers.length === 0 && (
-          <div className="text-center text-zinc-500 py-4">No users found</div>
+          <div className="text-center text-zinc-500 py-4 text-xs lg:text-sm">No users found</div>
         )}
         {showGroups && filteredGroups.length === 0 && (
-          <div className="text-center text-zinc-500 py-4">No groups found</div>
+          <div className="text-center text-zinc-500 py-4 text-xs lg:text-sm">No groups found</div>
         )}
       </div>
 
-      {/* 🧩 Create Group Modal */}
+      {/* Create Group Modal */}
       {showCreateGroupModal && (
         <CreateGroupModal
           onClose={() => {
-            getGroups(); // ✅ Refresh groups when modal closes
+            getGroups();
             setShowCreateGroupModal(false);
           }}
         />
