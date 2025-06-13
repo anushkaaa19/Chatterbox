@@ -12,6 +12,8 @@ import {
   checkAuth,
   googleAuth
 } from "../controllers/auth.controller.js";
+import { verifyToken } from "../middleware/verifyToken.js";
+
 
 const router = express.Router();
 
@@ -23,6 +25,6 @@ router.post("/google", googleAuth);
 router.post("/login", login);
 router.post("/logout", logout);
 router.put("/update-profile", protectRoute, updateProfile);
-router.get("/check", protectRoute, checkAuth);
+router.get("/check", verifyToken, checkAuth);
 
 export default router;

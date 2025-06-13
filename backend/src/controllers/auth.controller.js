@@ -257,13 +257,8 @@ export const updateProfile = async (req, res) => {
 };
 
 
-// Check auth (returns user data if logged in)
 export const checkAuth = (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(200).json(null);
-    }
-
     res.status(200).json({
       _id: req.user._id,
       fullName: req.user.fullName,
@@ -271,8 +266,7 @@ export const checkAuth = (req, res) => {
       profilePic: req.user.profilePic,
       createdAt: req.user.createdAt,
       updatedAt: req.user.updatedAt,
-      bio: req.user.bio, // ✅ ADD THIS
-
+      bio: req.user.bio,
     });
   } catch (error) {
     console.error("Error in checkAuth controller:", error.message);
@@ -282,6 +276,7 @@ export const checkAuth = (req, res) => {
     });
   }
 };
+
 
 // Google OAuth controller
 export const googleAuth = async (req, res) => {
