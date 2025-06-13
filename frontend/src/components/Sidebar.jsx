@@ -40,44 +40,44 @@ const Sidebar = () => {
   if (isUsersLoading || isGroupLoading) return <SidebarSkeleton />;
 
   return (
-    <aside className="h-full w-20 md:w-48 lg:w-72 border-r border-gray-200 flex flex-col transition-all duration-200 bg-white">
+    <aside className="h-full w-20 md:w-48 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200 bg-base-100 text-base-content">
       {/* 🔼 Header */}
-      <div className="border-b border-gray-200 w-full p-3 lg:p-4">
+      <div className="border-b border-base-300 w-full p-3 lg:p-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            {showGroups ? <UsersRound className="size-6 text-blue-600" /> : <Users className="size-6 text-blue-600" />}
-            <span className="font-medium hidden md:block lg:block text-gray-800">
+            {showGroups ? (
+              <UsersRound className="size-6 text-primary" />
+            ) : (
+              <Users className="size-6 text-primary" />
+            )}
+            <span className="font-medium hidden md:block lg:block">
               {showGroups ? "Groups" : "Contacts"}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Groups/Contacts toggle for all screen sizes */}
             <button
               onClick={() => setShowGroups(!showGroups)}
-              className="text-blue-600 hover:text-blue-700 flex items-center"
+              className="text-primary hover:text-primary-focus flex items-center"
               aria-label={showGroups ? "Show Contacts" : "Show Groups"}
             >
-              {/* Text for medium screens and above */}
               <span className="hidden md:inline text-sm font-medium">
                 {showGroups ? "Contacts" : "Groups"}
               </span>
-              
-              {/* Icon for mobile screens */}
               <span className="md:hidden">
                 {showGroups ? <Users className="size-5" /> : <UsersRound className="size-5" />}
               </span>
             </button>
-            
-            <button 
+
+            <button
               onClick={() => setShowMobileSearch(!showMobileSearch)}
-              className="md:hidden text-blue-600"
+              className="md:hidden text-primary"
             >
               <Search className="size-5" />
             </button>
           </div>
         </div>
 
-        {/* 🔍 Search - Mobile (toggled) */}
+        {/* 🔍 Search Inputs */}
         {showMobileSearch && (
           <div className="mt-3 md:hidden">
             <input
@@ -85,23 +85,21 @@ const Sidebar = () => {
               placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="input input-bordered w-full"
             />
           </div>
         )}
-
-        {/* 🔍 Search - Medium and Large screens */}
         <div className="mt-3 hidden md:block">
           <input
             type="text"
             placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="input input-bordered w-full"
           />
         </div>
 
-        {/* ✅ Online Filter - Large screens only */}
+        {/* ✅ Online Filter */}
         {!showGroups && (
           <div className="mt-3 hidden lg:flex items-center gap-2">
             <label className="cursor-pointer flex items-center gap-2">
@@ -109,22 +107,22 @@ const Sidebar = () => {
                 type="checkbox"
                 checked={showOnlineOnly}
                 onChange={(e) => setShowOnlineOnly(e.target.checked)}
-                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                className="checkbox checkbox-sm checkbox-primary"
               />
-              <span className="text-sm text-gray-700">Show online only</span>
+              <span className="text-sm">Show online only</span>
             </label>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs opacity-60">
               ({Math.max(0, onlineUsers.length - 1)} online)
             </span>
           </div>
         )}
 
-        {/* ➕ Create Group - Medium and Large screens */}
+        {/* ➕ Create Group */}
         {showGroups && (
           <div className="mt-3 hidden md:block">
             <button
               onClick={() => setShowCreateGroupModal(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+              className="btn btn-primary w-full"
             >
               <Plus className="size-4" />
               <span className="hidden lg:block">Create Group</span>
@@ -133,7 +131,7 @@ const Sidebar = () => {
         )}
       </div>
 
-      {/* 👥 Contact or Group List */}
+      {/* 👥 List Section */}
       <div className="overflow-y-auto w-full py-2">
         {!showGroups &&
           filteredUsers.map((user) => (
@@ -143,25 +141,23 @@ const Sidebar = () => {
                 setSelectedUser(user);
                 setSelectedGroup(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 hover:bg-blue-50 transition-colors relative ${
-                selectedUser?._id === user._id ? "bg-blue-50" : ""
+              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
+                selectedUser?._id === user._id ? "bg-base-200" : "hover:bg-base-200"
               }`}
             >
               <div className="relative">
                 <img
                   src={user.profilePic || "/avatar.png"}
                   alt={user.fullName}
-                  className="size-12 object-cover rounded-full border-2 border-white shadow"
+                  className="size-12 object-cover rounded-full border border-base-300 shadow"
                 />
                 {onlineUsers.includes(user._id) && (
-                  <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-white" />
+                  <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-base-100" />
                 )}
               </div>
-              
-              {/* Name and status for all screens */}
               <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
-                <div className="font-medium truncate text-gray-800">{user.fullName}</div>
-                <div className="text-xs text-gray-500">
+                <div className="font-medium truncate">{user.fullName}</div>
+                <div className="text-xs opacity-60">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
@@ -176,22 +172,20 @@ const Sidebar = () => {
                 setSelectedGroup(group);
                 setSelectedUser(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 hover:bg-blue-50 transition-colors relative ${
-                selectedGroup?._id === group._id ? "bg-blue-50" : ""
+              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
+                selectedGroup?._id === group._id ? "bg-base-200" : "hover:bg-base-200"
               }`}
             >
               <div className="relative">
                 <img
                   src={group.profilePic || "/avatar.png"}
                   alt={group.name}
-                  className="size-12 object-cover rounded-full border-2 border-white shadow"
+                  className="size-12 object-cover rounded-full border border-base-300 shadow"
                 />
               </div>
-              
-              {/* Name and member count for all screens */}
               <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
-                <div className="font-medium truncate text-gray-800">{group.name}</div>
-                <div className="text-xs text-gray-500">
+                <div className="font-medium truncate">{group.name}</div>
+                <div className="text-xs opacity-60">
                   {group.members.length} members
                 </div>
               </div>
@@ -199,14 +193,13 @@ const Sidebar = () => {
           ))}
 
         {!showGroups && filteredUsers.length === 0 && (
-          <div className="text-center text-gray-500 py-4">No users found</div>
+          <div className="text-center opacity-50 py-4">No users found</div>
         )}
         {showGroups && filteredGroups.length === 0 && (
-          <div className="text-center text-gray-500 py-4">No groups found</div>
+          <div className="text-center opacity-50 py-4">No groups found</div>
         )}
       </div>
 
-      {/* 🧩 Create Group Modal */}
       {showCreateGroupModal && (
         <CreateGroupModal
           onClose={() => {
