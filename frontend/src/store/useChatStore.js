@@ -12,37 +12,46 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   typingUsers: [],
 
-  addTypingUser: (userId) => {
+  setSelectedUser: (user) => {
+    const socket = useAuthStore.getState().socket;
+    const prevUser = get().selectedUser;
+
+    // Leave previous room
+    if (socket && prevUser?._id) {
+      socket.emit("leaveRoom", prevUser._id);
+    }
+
+    // Join new room
+    if (socket && user?._id) {
+      socket.emit("joinRoom", user._id);
+    }
+
+    set({ selectedUser: user, messages: [] });
+  },
+
+  addTypingUser: (userId) =>
     set((state) => ({
       typingUsers: state.typingUsers.includes(userId)
         ? state.typingUsers
         : [...state.typingUsers, userId],
-    }));
-  },
+    })),
 
-  removeTypingUser: (userId) => {
+  removeTypingUser: (userId) =>
     set((state) => ({
       typingUsers: state.typingUsers.filter((id) => id !== userId),
-    }));
-  },
+    })),
 
   subscribeToTypingEvents: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
-    socket.on("typing", ({ userId }) => {
-      get().addTypingUser(userId);
-    });
-
-    socket.on("stopTyping", ({ userId }) => {
-      get().removeTypingUser(userId);
-    });
+    socket.on("typing", ({ userId }) => get().addTypingUser(userId));
+    socket.on("stopTyping", ({ userId }) => get().removeTypingUser(userId));
   },
 
   unsubscribeFromTypingEvents: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-
     socket.off("typing");
     socket.off("stopTyping");
   },
@@ -51,11 +60,9 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
-      const users = res.data?.users ?? [];
-      set({ users });
+      set({ users: res.data?.users ?? [] });
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to load users";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Failed to load users");
     } finally {
       set({ isUsersLoading: false });
     }
@@ -65,11 +72,9 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/chat/${userId}`);
-      const data = res.data?.messages ?? res.data;
-      set({ messages: Array.isArray(data) ? data : [] });
+      set({ messages: res.data?.messages ?? [] });
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to load messages";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Failed to load messages");
       set({ messages: [] });
     } finally {
       set({ isMessagesLoading: false });
@@ -77,7 +82,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
+    const { selectedUser } = get();
     if (!selectedUser?._id) {
       const err = new Error("No recipient selected");
       toast.error(err.message);
@@ -90,38 +95,32 @@ export const useChatStore = create((set, get) => ({
         messageData
       );
       const newMsg = res.data?.message ?? res.data;
-      if (!newMsg || !newMsg._id) {
-        throw new Error("Invalid message returned from server");
-      }
-      set({ messages: [...messages, newMsg] });
+      if (!newMsg || !newMsg._id) throw new Error("Invalid message");
+      set((state) => ({
+        messages: [...state.messages, newMsg],
+      }));
       return newMsg;
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to send message";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Failed to send message");
       throw err;
     }
-  },
-
-  updateMessage: (updatedMessage) => {
-    const updated = get().messages.map((msg) =>
-      msg._id === updatedMessage._id ? updatedMessage : msg
-    );
-    set({ messages: updated });
   },
 
   editMessage: async (id, newText) => {
     try {
       const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
-      get().updateMessage(res.data.message);
+      const updatedMsg = res.data?.message ?? res.data;
+      get().updateMessage(updatedMsg);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to edit message");
     }
   },
 
-  toggleLike: (messageId) => {
+  toggleLike: async (messageId) => {
     const { authUser } = useAuthStore.getState();
     if (!authUser || !authUser._id) return;
-
+  
+    // Optimistic UI update
     set((state) => ({
       messages: state.messages.map((msg) =>
         msg._id === messageId
@@ -134,29 +133,42 @@ export const useChatStore = create((set, get) => ({
           : msg
       ),
     }));
+  
+    // Sync with backend
+    try {
+      const res = await axiosInstance.post(`/messages/like/${messageId}`);
+      const updatedMessage = res.data.message;
+      get().updateMessage(updatedMessage);
+    } catch (err) {
+      toast.error("Failed to like/unlike message");
+    }
+  },  
+
+  updateMessage: (updatedMsg) => {
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg._id === updatedMsg._id ? updatedMsg : msg
+      ),
+    }));
   },
 
   subscribeToMessages: () => {
-    const { selectedUser } = get();
-    if (!selectedUser) return;
-
     const socket = useAuthStore.getState().socket;
+    if (!socket) return;
 
-    socket.on("newMessage", (newMessage) => {
-      if (newMessage.senderId !== selectedUser._id) return;
-
-      set({
-        messages: [...get().messages, newMessage],
-      });
+    socket.on("newMessage", (newMsg) => {
+      const { selectedUser, messages } = get();
+      if (newMsg.senderId === selectedUser?._id) {
+        const alreadyExists = messages.some((msg) => msg._id === newMsg._id);
+        if (!alreadyExists) {
+          set({ messages: [...messages, newMsg] });
+        }
+      }
     });
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    if (socket) {
-      socket.off("newMessage");
-    }
+    if (socket) socket.off("newMessage");
   },
-
-  setSelectedUser: (user) => set({ selectedUser: user }),
 }));
