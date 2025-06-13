@@ -115,9 +115,10 @@ export const getMessages = async (req, res) => {
 // ✅ Send message (text, image, audio) — PDF removed
 export const sendMessages = async (req, res) => {
   try {
-    const { text, image, audio } = req.body;
+    const { text } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
+    const files = req.files || {};
 
     if (!receiverId) {
       return res.status(400).json({ success: false, message: "Receiver ID required" });
@@ -126,20 +127,26 @@ export const sendMessages = async (req, res) => {
     let imageUrl = null;
     let audioUrl = null;
 
-    if (image) {
-      const imgUpload = await cloudinary.uploader.upload(image, {
-        folder: "message_images",
-        resource_type: "auto",
-      });
-      imageUrl = imgUpload.secure_url;
+    // Handle image upload
+    if (files.image) {
+      const imgUpload = await cloudinary.uploader.upload_stream(
+        { folder: "message_images" },
+        (error, result) => {
+          if (error) throw error;
+          imageUrl = result.secure_url;
+        }
+      ).end(files.image[0].buffer);
     }
 
-    if (audio) {
-      const audioUpload = await cloudinary.uploader.upload(audio, {
-        folder: "message_audio",
-        resource_type: "auto",
-      });
-      audioUrl = audioUpload.secure_url;
+    // Handle audio upload
+    if (files.audio) {
+      const audioUpload = await cloudinary.uploader.upload_stream(
+        { folder: "message_audio", resource_type: "auto" },
+        (error, result) => {
+          if (error) throw error;
+          audioUrl = result.secure_url;
+        }
+      ).end(files.audio[0].buffer);
     }
 
     const newMessage = new Message({
@@ -152,7 +159,7 @@ export const sendMessages = async (req, res) => {
 
     await newMessage.save();
 
-    // Emit to receiver if online
+    // Socket.io emission logic remains the same
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
@@ -160,21 +167,14 @@ export const sendMessages = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: {
-        _id: newMessage._id,
-        senderId,
-        receiverId,
-        text: newMessage.text,
-        image: newMessage.image,
-        audio: newMessage.audio,
-        createdAt: newMessage.createdAt,
-      },
+      message: newMessage
     });
   } catch (error) {
-    console.error("Error in sendMessages controller:", error);
+    console.error("Error in sendMessages:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: "Failed to send message",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined
     });
   }
 };

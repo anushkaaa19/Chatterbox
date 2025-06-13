@@ -88,26 +88,39 @@ export const useChatStore = create((set, get) => ({
   
 
   sendMessage: async (messageData) => {
-    const { selectedUser } = get();
-    if (!selectedUser?._id) {
-      toast.error("Cannot send message: No recipient selected");
-      return;
-    }
-    
-
     try {
+      const formData = new FormData();
+      
+      // Append text if exists
+      if (messageData.text) {
+        formData.append("text", messageData.text);
+      }
+  
+      // Handle image (convert base64 to Blob if needed)
+      if (messageData.image) {
+        const blob = await fetch(messageData.image).then(r => r.blob());
+        formData.append("image", blob, "image.png");
+      }
+  
+      // Handle audio (convert base64 to Blob if needed)
+      if (messageData.audio) {
+        const blob = await fetch(messageData.audio).then(r => r.blob());
+        formData.append("audio", blob, "audio.webm");
+      }
+  
       const res = await axiosInstance.post(
         `/messages/chat/${selectedUser._id}`,
-        messageData
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
-      const newMsg = res.data?.message ?? res.data;
-      if (!newMsg || !newMsg._id) throw new Error("Invalid message");
-      set((state) => ({
-        messages: [...state.messages, newMsg],
-      }));
-      return newMsg;
+      
+      return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to send message");
+      console.error("Error details:", err.response?.data);
       throw err;
     }
   },
