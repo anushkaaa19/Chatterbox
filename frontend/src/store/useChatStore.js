@@ -89,20 +89,23 @@ export const useChatStore = create((set, get) => ({
 
   sendMessage: async (messageData) => {
     try {
+      const { selectedUser } = get();
+      if (!selectedUser || !selectedUser._id) {
+        toast.error("No user selected to send message");
+        return;
+      }
+  
       const formData = new FormData();
-      
-      // Append text if exists
+  
       if (messageData.text) {
         formData.append("text", messageData.text);
       }
   
-      // Handle image (convert base64 to Blob if needed)
       if (messageData.image) {
         const blob = await fetch(messageData.image).then(r => r.blob());
         formData.append("image", blob, "image.png");
       }
   
-      // Handle audio (convert base64 to Blob if needed)
       if (messageData.audio) {
         const blob = await fetch(messageData.audio).then(r => r.blob());
         formData.append("audio", blob, "audio.webm");
@@ -117,13 +120,14 @@ export const useChatStore = create((set, get) => ({
           },
         }
       );
-      
+  
       return res.data;
     } catch (err) {
       console.error("Error details:", err.response?.data);
       throw err;
     }
   },
+  
 
   editMessage: async (id, newText) => {
     try {
