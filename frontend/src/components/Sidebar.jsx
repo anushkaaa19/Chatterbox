@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useGroupStore } from "../store/useGroupStore";
 
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users, UsersRound, Plus } from "lucide-react";
+import { Users, UsersRound, Plus, Search } from "lucide-react";
 import CreateGroupModal from "./CreateGroupModal";
 
 const Sidebar = () => {
@@ -22,6 +22,7 @@ const Sidebar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showGroups, setShowGroups] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   useEffect(() => {
     getUsers();
@@ -49,15 +50,36 @@ const Sidebar = () => {
               {showGroups ? "Groups" : "Contacts"}
             </span>
           </div>
-          <button
-            onClick={() => setShowGroups(!showGroups)}
-            className="text-sm text-blue-500 underline hover:text-blue-600"
-          >
-            {showGroups ? "Contacts" : "Groups"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGroups(!showGroups)}
+              className="text-sm text-blue-500 underline hover:text-blue-600 hidden lg:block"
+            >
+              {showGroups ? "Contacts" : "Groups"}
+            </button>
+            <button
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className="lg:hidden text-blue-500"
+            >
+              <Search className="size-5" />
+            </button>
+          </div>
         </div>
 
-        {/* 🔍 Search */}
+        {/* 🔍 Search - Mobile */}
+        {showMobileSearch && (
+          <div className="mt-3 lg:hidden">
+            <input
+              type="text"
+              placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-md border border-base-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
+
+        {/* 🔍 Search - Desktop */}
         <div className="mt-3 hidden lg:block">
           <input
             type="text"
@@ -90,12 +112,12 @@ const Sidebar = () => {
         {showGroups && (
           <div className="mt-3">
             <button
-  onClick={() => setShowCreateGroupModal(true)}
-  className="btn btn-primary w-full flex items-center gap-2"
->
-  <Plus className="size-4" />
-  <span className="hidden lg:block">Create Group</span>
-</button>
+              onClick={() => setShowCreateGroupModal(true)}
+              className="btn btn-primary w-full flex items-center gap-2"
+            >
+              <Plus className="size-4" />
+              <span className="hidden lg:block">Create Group</span>
+            </button>
           </div>
         )}
       </div>
@@ -130,6 +152,13 @@ const Sidebar = () => {
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
+              {/* Mobile name display */}
+              <div className="lg:hidden absolute left-20 ml-2 text-left min-w-0">
+                <div className="font-medium truncate max-w-[120px]">{user.fullName}</div>
+                <div className="text-xs text-zinc-400">
+                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                </div>
+              </div>
             </button>
           ))}
 
@@ -155,6 +184,13 @@ const Sidebar = () => {
               <div className="hidden lg:block text-left min-w-0">
                 <div className="font-medium truncate">{group.name}</div>
                 <div className="text-sm text-zinc-400">
+                  {group.members.length} members
+                </div>
+              </div>
+              {/* Mobile name display */}
+              <div className="lg:hidden absolute left-20 ml-2 text-left min-w-0">
+                <div className="font-medium truncate max-w-[120px]">{group.name}</div>
+                <div className="text-xs text-zinc-400">
                   {group.members.length} members
                 </div>
               </div>
