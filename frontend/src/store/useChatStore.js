@@ -111,33 +111,37 @@ export const useChatStore = create((set, get) => ({
     );
     set({ messages: updated });
   },
-
-  editMessage: async (id, newText) => {
-    try {
-      const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
-      get().updateMessage(res.data.message);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to edit message");
-    }
-  },
-
-  toggleLike: (messageId) => {
-    const { authUser } = useAuthStore.getState();
-    if (!authUser || !authUser._id) return;
-
+// --- useChatStore.js ---
+editMessage: async (id, newText) => {
+  try {
+    const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
+    // Update the specific message in the store
     set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg._id === messageId
-          ? {
-              ...msg,
-              likes: msg.likes.includes(authUser._id)
-                ? msg.likes.filter((uid) => uid !== authUser._id)
-                : [...msg.likes, authUser._id],
-            }
-          : msg
-      ),
+      messages: state.messages.map(msg => 
+        msg._id === id ? {...msg, content: {...msg.content, text: newText}, edited: true} : msg
+      )
     }));
-  },
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Failed to edit message");
+  }
+},
+
+toggleLike: async (messageId) => {
+  try {
+    const res = await axiosInstance.post(`/messages/like/${messageId}`);
+    // Update the specific message in the store
+    set((state) => ({
+      messages: state.messages.map(msg => 
+        msg._id === messageId ? {
+          ...msg, 
+          likedBy: res.data.message.likedBy 
+        } : msg
+      )
+    }));
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Failed to toggle like");
+  }
+},
 
   subscribeToMessages: () => {
     const { selectedUser } = get();

@@ -81,7 +81,7 @@ export const getMessages = async (req, res) => {
   }
 };
 
-// Edit a one-to-one message (only text for now)
+// --- message.controller.js ---
 export const editMessage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -91,6 +91,7 @@ export const editMessage = async (req, res) => {
     const message = await Message.findById(id);
     if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
+    // Ensure we're comparing ObjectIds correctly
     if (message.sender.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
@@ -99,13 +100,13 @@ export const editMessage = async (req, res) => {
     message.edited = true;
     await message.save();
 
+    // Return the updated message
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Toggle like on a one-to-one message
 export const toggleLike = async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,10 +115,22 @@ export const toggleLike = async (req, res) => {
     const message = await Message.findById(id);
     if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
-    const alreadyLiked = message.likedBy.includes(userId);
+    // Convert to string for comparison
+    const userIdStr = userId.toString();
+    
+    // Initialize likedBy array if it doesn't exist
+    if (!Array.isArray(message.likedBy)) {
+      message.likedBy = [];
+    }
+
+    // Check if user already liked the message
+    const alreadyLiked = message.likedBy.some(id => id.toString() === userIdStr);
+    
     if (alreadyLiked) {
-      message.likedBy.pull(userId);
+      // Remove like
+      message.likedBy = message.likedBy.filter(id => id.toString() !== userIdStr);
     } else {
+      // Add like
       message.likedBy.push(userId);
     }
 

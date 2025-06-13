@@ -217,10 +217,9 @@ const ChatContainer = () => {
                   )}
 
                   {/* MENU */}
-                  <div className="hidden group-hover:block absolute top-0 right-0">
+                  <div className={`hidden group-hover:block absolute ${own ? 'top-0 left-0' : 'top-0 right-0'} z-10`}>
                     <MessageOptionsMenu
                       isOwnMessage={own}
-                      message={message}
                       onEdit={() => handleEdit(message._id, message.content?.text)}
                       onLike={() => handleLike(message._id)}
                     />
@@ -229,7 +228,6 @@ const ChatContainer = () => {
               </div>
             );
           })}
-
           {searchTerm && filteredMessages.length === 0 && (
             <p className="text-center text-zinc-500 py-8">No messages found.</p>
           )}
