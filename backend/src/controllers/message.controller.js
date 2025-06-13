@@ -7,20 +7,19 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-
     const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
     res.status(200).json({
       success: true,
       users: filteredUsers,
-      count: filteredUsers.length
+      count: filteredUsers.length,
     });
   } catch (error) {
     console.error("Error in getUsersForSidebar:", error.message);
     res.status(500).json({
       success: false,
-      error: "Internal server error",
-      message: error.message
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };
@@ -33,9 +32,7 @@ export const editMessage = async (req, res) => {
 
   try {
     const message = await Message.findById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message not found" });
-    }
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
     if (message.senderId.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
@@ -44,6 +41,12 @@ export const editMessage = async (req, res) => {
     message.text = newText;
     message.edited = true;
     await message.save();
+
+    // Emit to receiver if online
+    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("editedMessage", message);
+    }
 
     res.status(200).json({ success: true, message });
   } catch (err) {
@@ -58,9 +61,7 @@ export const toggleLike = async (req, res) => {
 
   try {
     const message = await Message.findById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message not found" });
-    }
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
     const index = message.likes.indexOf(userId);
     if (index === -1) {
@@ -70,6 +71,13 @@ export const toggleLike = async (req, res) => {
     }
 
     await message.save();
+
+    // Emit like update
+    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("likedMessage", message);
+    }
+
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -83,38 +91,31 @@ export const getMessages = async (req, res) => {
     const myId = req.user._id;
 
     if (!userToChatId) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID parameter is required"
-      });
+      return res.status(400).json({ success: false, message: "User ID parameter is required" });
     }
 
     const messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId }
-      ]
+        { senderId: userToChatId, receiverId: myId },
+      ],
     }).sort({ createdAt: 1 });
 
-    res.status(200).json({
-      success: true,
-      messages,
-      count: messages.length
-    });
+    res.status(200).json({ success: true, messages, count: messages.length });
   } catch (error) {
     console.error("Error in getMessages controller:", error.message);
     res.status(500).json({
       success: false,
-      error: "Internal server error",
-      message: process.env.NODE_ENV === "development" ? error.message : undefined
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
 
-// ✅ Send message (text/image/audio)
+// ✅ Send message (text, image, audio, pdf)
 export const sendMessages = async (req, res) => {
   try {
-    const { text, image, audio } = req.body;
+    const { text, image, audio, pdf } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
@@ -122,24 +123,33 @@ export const sendMessages = async (req, res) => {
       return res.status(400).json({ success: false, message: "Receiver ID required" });
     }
 
-    let imageUrl, audioUrl;
+    let imageUrl = null;
+    let audioUrl = null;
+    let pdfUrl = null;
 
-    // Upload image if exists
     if (image) {
       const imgUpload = await cloudinary.uploader.upload(image, {
         folder: "message_images",
-        resource_type: "auto"
+        resource_type: "auto",
       });
       imageUrl = imgUpload.secure_url;
     }
 
-    // Upload audio if exists
     if (audio) {
       const audioUpload = await cloudinary.uploader.upload(audio, {
         folder: "message_audio",
-        resource_type: "auto"
+        resource_type: "auto",
       });
       audioUrl = audioUpload.secure_url;
+    }
+
+    if (pdf) {
+      const pdfUpload = await cloudinary.uploader.upload(pdf, {
+        folder: "message_pdfs",
+        resource_type: "auto",
+        format: "pdf",
+      });
+      pdfUrl = pdfUpload.secure_url;
     }
 
     const newMessage = new Message({
@@ -147,12 +157,13 @@ export const sendMessages = async (req, res) => {
       receiverId,
       text: text || "",
       image: imageUrl,
-      audio: audioUrl
+      audio: audioUrl,
+      pdf: pdfUrl,
     });
 
     await newMessage.save();
 
-    // Send real-time notification
+    // Emit to receiver if online
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
@@ -167,14 +178,15 @@ export const sendMessages = async (req, res) => {
         text: newMessage.text,
         image: newMessage.image,
         audio: newMessage.audio,
-        createdAt: newMessage.createdAt
-      }
+        pdf: newMessage.pdf,
+        createdAt: newMessage.createdAt,
+      },
     });
   } catch (error) {
     console.error("Error in sendMessages controller:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };

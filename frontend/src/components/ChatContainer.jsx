@@ -7,7 +7,23 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing message
+// ✅ Util: Generate forced download Cloudinary URL
+const getDownloadablePdfLink = (url) => {
+  try {
+    const parts = url.split("/upload/");
+    if (parts.length !== 2) return url;
+
+    const publicPart = parts[1]; // e.g., v1718275405/abc.pdf
+    const fileName = publicPart.split("/").pop(); // abc.pdf
+
+    return `${parts[0]}/upload/fl_attachment:${fileName}/${publicPart}`;
+  } catch (err) {
+    console.error("Error generating download link:", err);
+    return url;
+  }
+};
+
+// ✅ Edit Message Modal
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -38,7 +54,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
             Cancel
           </button>
           <button
-            onClick={() => onSave(newText)}
+            onClick={() => onSave(newText.trim())}
             disabled={newText.trim() === ""}
             className={`px-4 py-2 text-sm rounded-md transition font-medium ${
               newText.trim() === ""
@@ -67,26 +83,16 @@ const ChatContainer = () => {
     typingUsers,
   } = useChatStore();
 
-  const {
-    authUser,
-    isCheckingAuth,
-    socket,
-    setAuthUser,
-    setIsCheckingAuth,
-    checkAuth,
-  } = useAuthStore();
+  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
 
   const messageEndRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search bar state
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (isCheckingAuth) {
-      checkAuth();
-    }
+    if (isCheckingAuth) checkAuth();
   }, [isCheckingAuth, checkAuth]);
 
   useEffect(() => {
@@ -108,16 +114,8 @@ const ChatContainer = () => {
     }
   }, [messages]);
 
-  if (isCheckingAuth) return <div>Loading chat...</div>;
-  if (!authUser?._id) return <div>Please log in to use the chat.</div>;
-
-  const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
-  };
+  const isOwnMessage = (senderId) =>
+    senderId?._id === authUser?._id || senderId === authUser?._id;
 
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
@@ -140,11 +138,14 @@ const ChatContainer = () => {
     msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
 
+  if (isCheckingAuth) return <div className="p-4">Loading chat...</div>;
+  if (!authUser?._id) return <div className="p-4">Please log in to use the chat.</div>;
+
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
-      {/* ✅ Search Bar */}
+      {/* 🔍 Search Bar */}
       <div className="px-4 pt-4">
         <input
           type="text"
@@ -177,7 +178,7 @@ const ChatContainer = () => {
                           ? authUser.profilePic || "/avatar.png"
                           : selectedUser?.profilePic || "/avatar.png"
                       }
-                      alt="Profile pic"
+                      alt="Profile"
                     />
                   </div>
                 </div>
@@ -188,7 +189,7 @@ const ChatContainer = () => {
                   </time>
                 </div>
 
-                <div className="chat-bubble flex flex-col relative">
+                <div className="chat-bubble flex flex-col relative max-w-[80%]">
                   {message.text && (
                     <>
                       <p>
@@ -200,9 +201,9 @@ const ChatContainer = () => {
 
                       {likedByCurrentUser && (
                         <button
-                          aria-label="Unlike message"
                           onClick={() => handleLike(message._id)}
                           className="mt-1 text-red-500 self-start"
+                          aria-label="Unlike message"
                         >
                           ❤️
                         </button>
@@ -213,26 +214,28 @@ const ChatContainer = () => {
                   {message.image && (
                     <img
                       src={message.image}
-                      alt="Attached"
+                      alt="Attachment"
                       className="mt-2 max-w-xs rounded-lg border object-cover"
                     />
                   )}
-                  {message.file && (
+
+                  {message.pdf && (
                     <a
-                      href={message.file}
-                      download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
+                      href={getDownloadablePdfLink(message.pdf)}
+                      download
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="block mt-2 underline text-blue-600"
                     >
-                      📎 {message.fileName || "Download file"}
+                      📄 {message.fileName || "Download PDF"}
                     </a>
                   )}
+
                   {message.audio && (
                     <audio controls src={message.audio} className="mt-2 max-w-xs" />
                   )}
 
-                  <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
+                  <div className="hidden group-hover:block absolute top-0 right-0 ml-2">
                     <MessageOptionsMenu
                       isOwnMessage={own}
                       message={message}

@@ -5,7 +5,7 @@ export const axiosInstance = axios.create({
     ? "http://localhost:5001/api" 
     : "/api",
   withCredentials: true,
-  timeout: 10000, // Add timeout
+  timeout: 20000, // Add timeout
 });
 
 // Add response interceptor to handle common errors

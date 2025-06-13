@@ -299,7 +299,7 @@ export const googleAuth = async (req, res) => {
         fullName: displayName,
         email,
         profilePic: photoURL,
-        password: "google-auth-no-password", // Mark as Google-authenticated user
+        password: null, // Mark as Google-authenticated user
       });
       await user.save();
     }
