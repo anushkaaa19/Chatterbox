@@ -14,10 +14,14 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5001; // Use default port if not defined
 const __dirname=path.resolve();
-app.use(fileUpload({
-  useTempFiles: true,
-  tempFileDir: "/tmp/",
-}));
+try {
+  app.use(fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/tmp/",
+  }));
+} catch (err) {
+  console.error("File upload middleware error:", err);
+}
 
 // Middleware setup
 app.use(express.json({ limit: "10mb" }));
