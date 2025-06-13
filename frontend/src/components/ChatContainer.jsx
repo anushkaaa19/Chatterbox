@@ -19,13 +19,13 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
-        <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
+      <div className="bg-base-100 rounded-xl p-6 shadow-2xl w-full max-w-md border border-base-300">
+        <h2 className="text-xl font-semibold text-base-content mb-4">Edit Message</h2>
 
         <textarea
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
-          className="w-full p-3 text-sm border border-zinc-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 text-sm border border-base-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary"
           rows={4}
           placeholder="Edit your message..."
         />
@@ -33,7 +33,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
         <div className="mt-5 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 transition"
+            className="px-4 py-2 rounded-md text-sm text-base-content hover:bg-base-200 transition"
           >
             Cancel
           </button>
@@ -42,8 +42,8 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
             disabled={newText.trim() === ""}
             className={`px-4 py-2 text-sm rounded-md transition font-medium ${
               newText.trim() === ""
-                ? "bg-blue-300 text-white cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
+                ? "bg-primary/50 text-white cursor-not-allowed"
+                : "bg-primary hover:bg-primary-focus text-primary-content"
             }`}
           >
             Save
@@ -71,8 +71,6 @@ const ChatContainer = () => {
     authUser,
     isCheckingAuth,
     socket,
-    setAuthUser,
-    setIsCheckingAuth,
     checkAuth,
   } = useAuthStore();
 
@@ -83,26 +81,19 @@ const ChatContainer = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    console.log("🔄 Checking auth status...");
     if (isCheckingAuth) {
       checkAuth();
     }
   }, [isCheckingAuth, checkAuth]);
 
   useEffect(() => {
-    console.log("📡 ChatContainer mounted. Socket:", socket);
-    if (!selectedUser?._id || !socket) {
-      console.warn("⚠️ selectedUser or socket not available");
-      return;
-    }
+    if (!selectedUser?._id || !socket) return;
 
-    console.log("📥 Fetching messages for user:", selectedUser._id);
     getMessages(selectedUser._id);
     subscribeToMessages();
     subscribeToTypingEvents();
 
     return () => {
-      console.log("🧹 Unsubscribing from messages & typing events...");
       unsubscribeFromMessages();
       unsubscribeFromTypingEvents();
     };
@@ -115,10 +106,7 @@ const ChatContainer = () => {
   }, [messages]);
 
   if (isCheckingAuth) return <div>Loading chat...</div>;
-  if (!authUser?._id) {
-    console.warn("⛔ No authUser found.");
-    return <div>Please log in to use the chat.</div>;
-  }
+  if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
   const isOwnMessage = (senderId) => {
     if (!senderId) return false;
@@ -129,14 +117,12 @@ const ChatContainer = () => {
   };
 
   const handleEdit = (id, oldText) => {
-    console.log("✏️ Edit clicked for message:", id);
     setEditingMessageId(id);
     setEditingOldText(oldText);
     setIsEditing(true);
   };
 
   const handleSaveEdit = (newText) => {
-    console.log("💾 Saving edited message:", newText);
     if (newText && newText !== editingOldText) {
       useChatStore.getState().editMessage(editingMessageId, newText);
     }
@@ -144,21 +130,15 @@ const ChatContainer = () => {
   };
 
   const handleLike = (id) => {
-    console.log("❤️ Toggling like for message:", id);
     useChatStore.getState().toggleLike(id);
   };
 
   const filteredMessages = messages.filter((msg) =>
-    msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
+    msg.content?.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
 
-  console.log("📨 Total messages to display:", messages.length);
-  if (searchTerm) {
-    console.log("🔍 Filtered messages:", filteredMessages.length);
-  }
-
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
+    <div className="flex-1 flex flex-col overflow-auto bg-base-100">
       <ChatHeader />
 
       <div className="px-4 pt-4">
@@ -167,7 +147,7 @@ const ChatContainer = () => {
           placeholder="Search messages..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 text-sm border border-base-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
 
@@ -176,14 +156,9 @@ const ChatContainer = () => {
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(searchTerm ? filteredMessages : messages).map((message) => {
-            console.log("📨 Rendering message:", message);
             const hasContent =
-            message.content?.text || message.content?.image || message.content?.file || message.content?.audio;
-          
-            if (!hasContent) {
-              console.warn("⚠️ Message has no content:", message);
-              return null;
-            }
+              message.content?.text || message.content?.image || message.content?.file || message.content?.audio;
+            if (!hasContent) return null;
 
             const own = isOwnMessage(message.senderId);
             const likes = Array.isArray(message.likes) ? message.likes : [];
@@ -195,73 +170,76 @@ const ChatContainer = () => {
                 className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
               >
                 <div className="chat-image avatar">
-                  <div className="size-10 rounded-full border">
+                  <div className="w-10 rounded-full border">
                     <img
                       src={
                         own
                           ? authUser.profilePic || "/avatar.png"
                           : selectedUser?.profilePic || "/avatar.png"
                       }
-                      alt="Profile pic"
+                      alt="Profile"
                     />
                   </div>
                 </div>
 
-                <div className="chat-header mb-1">
-                  <time className="text-xs opacity-50 ml-1">
-                    {formatMessageTime(message.createdAt)}
-                  </time>
+                <div className="chat-header mb-1 text-xs opacity-60">
+                  <time>{formatMessageTime(message.createdAt)}</time>
                 </div>
 
-                <div className="chat-bubble flex flex-col relative">
-                {message.content?.text && (
-  <>
-    <p>
-      {message.content.text}
-      {message.edited && (
-        <span className="text-xs ml-2">(edited)</span>
-      )}
-    </p>
+                <div
+                  className={`chat-bubble ${
+                    own ? "bg-primary text-primary-content" : "bg-base-200 text-base-content"
+                  } flex flex-col max-w-[75%]`}
+                >
+                  {message.content?.text && (
+                    <>
+                      <p>
+                        {message.content.text}
+                        {message.edited && (
+                          <span className="text-xs ml-2 opacity-70">(edited)</span>
+                        )}
+                      </p>
+                      {likedByCurrentUser && (
+                        <button
+                          aria-label="Unlike message"
+                          onClick={() => handleLike(message._id)}
+                          className="mt-1 text-red-500 self-start"
+                        >
+                          ❤️
+                        </button>
+                      )}
+                    </>
+                  )}
 
-    {likedByCurrentUser && (
-      <button
-        aria-label="Unlike message"
-        onClick={() => handleLike(message._id)}
-        className="mt-1 text-red-500 self-start"
-      >
-        ❤️
-      </button>
-    )}
-  </>
-)}
+                  {message.content?.image && (
+                    <img
+                      src={message.content.image}
+                      alt="Attached"
+                      className="mt-2 max-w-xs rounded-lg border object-cover"
+                    />
+                  )}
 
-{message.content?.image && (
-  <img
-    src={message.content.image}
-    alt="Attached"
-    className="mt-2 max-w-xs rounded-lg border object-cover"
-/>
-)}
-{message.content?.file && (
-  <a
-    href={message.content.file}
-    download={message.fileName || "file"}
-    className="block mt-2 underline text-blue-600"
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    📎 {message.fileName || "Download file"}
-  </a>
-)}
-{message.content?.audio && (
-  <audio controls src={message.content.audio} className="mt-2 max-w-xs" />
-)}
+                  {message.content?.file && (
+                    <a
+                      href={message.content.file}
+                      download={message.fileName || "file"}
+                      className="block mt-2 underline text-blue-600"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      📎 {message.fileName || "Download file"}
+                    </a>
+                  )}
 
-                  <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
+                  {message.content?.audio && (
+                    <audio controls src={message.content.audio} className="mt-2 max-w-xs" />
+                  )}
+
+                  <div className="hidden group-hover:block absolute top-1 right-1">
                     <MessageOptionsMenu
                       isOwnMessage={own}
                       message={message}
-                      onEdit={() => handleEdit(message._id, message.text)}
+                      onEdit={() => handleEdit(message._id, message.content?.text)}
                       onLike={() => handleLike(message._id)}
                     />
                   </div>
@@ -271,7 +249,7 @@ const ChatContainer = () => {
           })}
 
           {searchTerm && filteredMessages.length === 0 && (
-            <p className="text-center text-zinc-500 py-8">No messages found.</p>
+            <p className="text-center text-base-content/60 py-8">No messages found.</p>
           )}
 
           <div ref={messageEndRef} />
