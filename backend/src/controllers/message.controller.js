@@ -112,10 +112,10 @@ export const getMessages = async (req, res) => {
   }
 };
 
-// ✅ Send message (text, image, audio, pdf)
+// ✅ Send message (text, image, audio) — PDF removed
 export const sendMessages = async (req, res) => {
   try {
-    const { text, image, audio, pdf } = req.body;
+    const { text, image, audio } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
@@ -125,7 +125,6 @@ export const sendMessages = async (req, res) => {
 
     let imageUrl = null;
     let audioUrl = null;
-    let pdfUrl = null;
 
     if (image) {
       const imgUpload = await cloudinary.uploader.upload(image, {
@@ -143,22 +142,12 @@ export const sendMessages = async (req, res) => {
       audioUrl = audioUpload.secure_url;
     }
 
-    if (pdf) {
-      const pdfUpload = await cloudinary.uploader.upload(pdf, {
-        folder: "message_pdfs",
-        resource_type: "auto",
-        format: "pdf",
-      });
-      pdfUrl = pdfUpload.secure_url;
-    }
-
     const newMessage = new Message({
       senderId,
       receiverId,
       text: text || "",
       image: imageUrl,
       audio: audioUrl,
-      pdf: pdfUrl,
     });
 
     await newMessage.save();
@@ -178,7 +167,6 @@ export const sendMessages = async (req, res) => {
         text: newMessage.text,
         image: newMessage.image,
         audio: newMessage.audio,
-        pdf: newMessage.pdf,
         createdAt: newMessage.createdAt,
       },
     });

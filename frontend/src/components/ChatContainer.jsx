@@ -7,23 +7,11 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// ✅ Util: Generate forced download Cloudinary URL
-const getDownloadablePdfLink = (url) => {
-  try {
-    const parts = url.split("/upload/");
-    if (parts.length !== 2) return url;
+// ✅ Force-download Cloudinary PDF URL generator
+// ✅ Works with Cloudinary raw PDF URLs
 
-    const publicPart = parts[1]; // e.g., v1718275405/abc.pdf
-    const fileName = publicPart.split("/").pop(); // abc.pdf
 
-    return `${parts[0]}/upload/fl_attachment:${fileName}/${publicPart}`;
-  } catch (err) {
-    console.error("Error generating download link:", err);
-    return url;
-  }
-};
 
-// ✅ Edit Message Modal
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -37,7 +25,6 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
         <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
-
         <textarea
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
@@ -45,7 +32,6 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
           rows={4}
           placeholder="Edit your message..."
         />
-
         <div className="mt-5 flex justify-end gap-3">
           <button
             onClick={onClose}
@@ -198,7 +184,6 @@ const ChatContainer = () => {
                           <span className="text-xs ml-2">(edited)</span>
                         )}
                       </p>
-
                       {likedByCurrentUser && (
                         <button
                           onClick={() => handleLike(message._id)}
@@ -218,19 +203,6 @@ const ChatContainer = () => {
                       className="mt-2 max-w-xs rounded-lg border object-cover"
                     />
                   )}
-
-                  {message.pdf && (
-                    <a
-                      href={getDownloadablePdfLink(message.pdf)}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block mt-2 underline text-blue-600"
-                    >
-                      📄 {message.fileName || "Download PDF"}
-                    </a>
-                  )}
-
                   {message.audio && (
                     <audio controls src={message.audio} className="mt-2 max-w-xs" />
                   )}

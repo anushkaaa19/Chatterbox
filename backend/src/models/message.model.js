@@ -18,10 +18,6 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
-    pdf: {
-      type: String,
-      default: ""
-    },    
     audio: {
       type: String, // ✅ Add this to support audio messages
     },

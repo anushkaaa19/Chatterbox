@@ -8,7 +8,6 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [filePreview, setFilePreview] = useState(null);
   const [fileData, setFileData] = useState(null);
-  const [fileType, setFileType] = useState(null);
   const [audioBlob, setAudioBlob] = useState(null);
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
@@ -54,24 +53,22 @@ const MessageInput = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files are allowed");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setFilePreview(reader.result);
       setFileData(reader.result);
-      setFileType(file.type.startsWith("image/") ? "image" : "pdf");
     };
-
-    if (file.type.startsWith("image/") || file.type === "application/pdf") {
-      reader.readAsDataURL(file);
-    } else {
-      toast.error("Unsupported file type. Only image and PDF allowed.");
-    }
+    reader.readAsDataURL(file);
   };
 
   const removeFile = () => {
     setFilePreview(null);
     setFileData(null);
-    setFileType(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -171,8 +168,7 @@ const MessageInput = () => {
     try {
       await sendMessage({
         text: text.trim(),
-        image: fileType === "image" ? fileData : null,
-        pdf: fileType === "pdf" ? fileData : null,
+        image: fileData,
         audio: audioDataUrl,
       });
 
@@ -190,25 +186,11 @@ const MessageInput = () => {
       {/* File Preview */}
       {filePreview && (
         <div className="mb-3 relative w-fit">
-          {fileType === "image" ? (
-            <img
-              src={filePreview}
-              alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
-            />
-          ) : (
-            <div className="p-2 border border-zinc-700 rounded-lg bg-base-200">
-              <p className="text-sm">📄 PDF attached</p>
-              <a
-                href={filePreview}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link link-primary text-xs"
-              >
-                View PDF
-              </a>
-            </div>
-          )}
+          <img
+            src={filePreview}
+            alt="Preview"
+            className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+          />
           <button
             onClick={removeFile}
             className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
@@ -248,7 +230,7 @@ const MessageInput = () => {
 
           <input
             type="file"
-            accept="image/*,application/pdf"
+            accept="image/*"
             ref={fileInputRef}
             onChange={handleFileChange}
             className="hidden"
