@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import protectRoute from "../middlewares/auth.middlewares.js";
 import {
   getUsersForSidebar,
@@ -10,13 +11,21 @@ import {
 
 const router = express.Router();
 
-// Make parameters explicitly named and optional if needed
-router.put("/edit/:messageId", protectRoute, editMessage);  // ✅ More explicit
-router.post("/like/:messageId", protectRoute, toggleLike);  // ✅ More explicit
+// Use memory storage for multer
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+router.put("/edit/:messageId", protectRoute, editMessage);
+router.post("/like/:messageId", protectRoute, toggleLike);
 router.get("/users", protectRoute, getUsersForSidebar);
 
-// ✅ Use /chat/:id to avoid collision with /groups/:groupId/messages
-router.get("/chat/:messageId", protectRoute, getMessages);
-router.post("/chat/:messageId", protectRoute, sendMessages);
+// Use upload.fields for image/audio
+router.get("/chat/:id", protectRoute, getMessages);
+router.post(
+  "/chat/:id",
+  protectRoute,
+  upload.fields([{ name: "image" }, { name: "audio" }]),
+  sendMessages
+);
 
 export default router;
