@@ -19,7 +19,6 @@ export const useAuthStore = create(
       isCheckingAuth: true,
       onlineUsers: [],
       socket: null,
-
       resetEmail: null,
       resetToken: null,
 
@@ -206,7 +205,7 @@ export const useAuthStore = create(
       
         const sock = io(SOCKET_URL, {
           query: { userId: authUser._id },
-          transports: ["websocket"],
+          transports: ["websocket","polling"],
         });
       
         sock.on("connect", () => console.log("Socket connected"));
