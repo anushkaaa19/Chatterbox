@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { MessageOptionsMenu } from "./MessageOptionsMenu";
+import MessageOptionsMenu from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing message
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -29,10 +28,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
           placeholder="Edit your message..."
         />
         <div className="mt-5 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="btn btn-ghost btn-sm"
-          >
+          <button onClick={onClose} className="btn btn-ghost btn-sm">
             Cancel
           </button>
           <button
@@ -58,15 +54,11 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
-    typingUsers,
+    editMessage,
+    toggleLike,
   } = useChatStore();
 
-  const {
-    authUser,
-    isCheckingAuth,
-    socket,
-    checkAuth,
-  } = useAuthStore();
+  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
 
   const messageEndRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -110,13 +102,13 @@ const ChatContainer = () => {
 
   const handleSaveEdit = (newText) => {
     if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
+      editMessage(editingMessageId, newText);
     }
     setIsEditing(false);
   };
 
   const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
+    toggleLike(id);
   };
 
   const filteredMessages = messages.filter((msg) =>
@@ -140,98 +132,112 @@ const ChatContainer = () => {
       {isMessagesLoading ? (
         <MessageSkeleton />
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.senderId);
+            const likes = Array.isArray(message.likes) ? message.likes : [];
+            const likedByCurrentUser = likes.includes(authUser._id);
+
+            // Skip empty messages
             const hasContent =
               message.content?.text ||
               message.content?.image ||
               message.content?.file ||
               message.content?.audio;
-
             if (!hasContent) return null;
-
-            const likes = Array.isArray(message.likes) ? message.likes : [];
-            const likedByCurrentUser = likes.includes(authUser._id);
 
             return (
               <div
                 key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group`}
+                className={`flex ${own ? "justify-end" : "justify-start"} mb-2`}
               >
-                <div className="chat-image avatar">
-                  <div className="w-10 rounded-full border">
-                    <img
-                      src={
-                        own
-                          ? authUser.profilePic || "/avatar.png"
-                          : selectedUser?.profilePic || "/avatar.png"
-                      }
-                      alt="Profile"
-                    />
+                <div
+                  className={`flex items-start ${
+                    own ? "flex-row-reverse" : ""
+                  } gap-2 max-w-[85%]`}
+                >
+                  {/* Avatar */}
+                  <div className="avatar mt-1">
+                    <div className="w-8 rounded-full">
+                      <img
+                        src={
+                          own
+                            ? authUser.profilePic || "/avatar.png"
+                            : selectedUser?.profilePic || "/avatar.png"
+                        }
+                        alt="avatar"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="chat-header text-xs mb-1 opacity-70">
-                  {formatMessageTime(message.createdAt)}
-                </div>
+                  {/* Message content */}
+                  <div
+                    className={`flex flex-col ${own ? "items-end" : "items-start"}`}
+                  >
+                    {/* Timestamp */}
+                    <div className="text-xs text-base-content opacity-60 mb-1">
+                      {formatMessageTime(message.createdAt)}
+                    </div>
 
-                <div className="chat-bubble relative space-y-2">
-                  {/* TEXT */}
-                  {message.content?.text && (
-                    <>
-                      <p>
-                        {message.content.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
+                    {/* Bubble */}
+                    <div
+                      className={`px-3 py-2 rounded-lg ${
+                        own
+                          ? "bg-primary text-primary-content"
+                          : "bg-base-200 text-base-content"
+                      }`}
+                    >
+                      {message.content?.text && (
+                        <>
+                          <p>{message.content.text}</p>
+                          {message.edited && (
+                            <span className="text-xs ml-2">(edited)</span>
+                          )}
+                        </>
+                      )}
+                      {message.content?.image && (
+                        <img
+                          src={message.content.image}
+                          alt="sent"
+                          className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
+                        />
+                      )}
+                      {message.content?.file && (
+                        <a
+                          href={message.content.file}
+                          download={message.fileName || "file"}
+                          className="block mt-2 underline text-blue-600"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          📎 {message.fileName || "Download file"}
+                        </a>
+                      )}
+                      {message.content?.audio && (
+                        <audio controls className="mt-1 w-full max-w-xs">
+                          <source src={message.content.audio} />
+                        </audio>
+                      )}
+                    </div>
+
+                    {/* Like / Menu */}
+                    <div className="text-[10px] text-base-content opacity-50 mt-1 flex gap-2">
                       {likedByCurrentUser && (
                         <button
+                          aria-label="Unlike message"
                           onClick={() => handleLike(message._id)}
-                          className="text-red-500 text-sm"
+                          className="text-red-500"
                         >
                           ❤
                         </button>
                       )}
-                    </>
-                  )}
-
-                  {/* IMAGE */}
-                  {message.content?.image && (
-                    <img
-                      src={message.content.image}
-                      alt="Sent"
-                      className="max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-
-                  {/* FILE */}
-                  {message.content?.file && (
-                    <a
-                      href={message.content.file}
-                      download={message.fileName || "file"}
-                      className="block underline text-blue-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
-
-                  {/* AUDIO */}
-                  {message.content?.audio && (
-                    <audio controls src={message.content.audio} className="max-w-xs" />
-                  )}
-
-                  {/* MENU */}
-                  <div className="hidden group-hover:block absolute top-0 right-0">
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      message={message}
-                      onEdit={() => handleEdit(message._id, message.content?.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
+                      <MessageOptionsMenu
+                        isOwnMessage={own}
+                        message={message}
+                        onEdit={() => handleEdit(message._id, message.content?.text)}
+                        onLike={() => handleLike(message._id)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
