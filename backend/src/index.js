@@ -3,14 +3,37 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { connectDB } from "./lib/db.js";
-import authRoutes from "./routes/auth.route.js";
-import messageRoutes from "./routes/message.route.js";
+
 import {app,server} from "./lib/socket.js"
 import fileUpload from "express-fileupload";
+let authRoutes, messageRoutes, groupRoutes;
+
+try {
+  authRoutes = await import("./routes/auth.route.js").then(mod => mod.default);
+  console.log("✅ authRoutes loaded");
+} catch (err) {
+  console.error("❌ Failed to import authRoutes", err);
+}
+
+try {
+  messageRoutes = await import("./routes/message.route.js").then(mod => mod.default);
+  console.log("✅ messageRoutes loaded");
+} catch (err) {
+  console.error("❌ Failed to import messageRoutes", err);
+}
+
+try {
+  groupRoutes = await import("./routes/group.route.js").then(mod => mod.default);
+  console.log("✅ groupRoutes loaded");
+} catch (err) {
+  console.error("❌ Failed to import groupRoutes", err);
+}
 
 import path from "path";
-import groupRoutes from "./routes/group.route.js";
 dotenv.config();
+console.log("authRoutes", typeof authRoutes);       // should be 'function'
+console.log("messageRoutes", typeof messageRoutes); // should be 'function'
+console.log("groupRoutes", typeof groupRoutes);     // should be 'function'
 
 const PORT = process.env.PORT || 5001; // Use default port if not defined
 const __dirname=path.resolve();
