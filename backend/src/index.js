@@ -11,6 +11,10 @@ import fileUpload from "express-fileupload";
 import path from "path";
 import groupRoutes from "./routes/group.route.js";
 dotenv.config();
+console.log("✅ authRoutes", authRoutes.stack);
+console.log("✅ messageRoutes", messageRoutes.stack);
+console.log("✅ groupRoutes", groupRoutes.stack);
+
 
 const PORT = process.env.PORT || 5001; // Use default port if not defined
 const __dirname=path.resolve();
@@ -41,37 +45,44 @@ app.use((req, res, next) => {
   }
 });
 // Routes
+// Middleware and route setup
 try {
   app.use("/api/auth", authRoutes);
+  console.log("✅ Auth routes loaded");
 } catch (err) {
-  console.error("❌ Error in authRoutes:", err);
+  console.error("❌ Error registering auth routes:", err);
 }
 
 try {
   app.use("/api/messages", messageRoutes);
+  console.log("✅ Message routes loaded");
 } catch (err) {
-  console.error("❌ Error in messageRoutes:", err);
+  console.error("❌ Error registering message routes:", err);
 }
 
 try {
   app.use("/api/groups", groupRoutes);
+  console.log("✅ Group routes loaded");
 } catch (err) {
-  console.error("❌ Error in groupRoutes:", err);
+  console.error("❌ Error registering group routes:", err);
 }
 
 
-if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../frontend/build")));
-  
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "../frontend", "build", "index.html"));
-    });
-  }
+
+if (process.env.NODE_ENV === "production" && process.env.HOST_FRONTEND === "true") {
+  app.use(express.static(path.join(__dirname, "../frontend/build")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "build", "index.html"));
+  });
+}
+
 // Global error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send({ message: "Something went wrong!" });
 });
+
+
 
 // Connect to DB and then start the server
 connectDB().then(() => {
