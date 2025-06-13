@@ -1,11 +1,10 @@
 import axios from "axios";
 export const axiosInstance = axios.create({
-  baseURL: process.env.NODE_ENV === "development" 
-    ? "http://localhost:5001/api" 
-    : "https://chatterbox-backend-rus5.onrender.com/api", // Add your production URL here
-  withCredentials: true,
-  timeout: 20000,
+  baseURL: "https://chatterbox-backend-rus5.onrender.com/api",
+  withCredentials: true, // IMPORTANT if using cookies
+  timeout:2000,
 });
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
