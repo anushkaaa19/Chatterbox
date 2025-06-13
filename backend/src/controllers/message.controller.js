@@ -113,11 +113,11 @@ export const getMessages = async (req, res) => {
   }
 };export const sendMessages = async (req, res) => {
   try {
-    console.log("Incoming body:", req.body);
-    console.log("Incoming files:", req.files);
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
 
     const { text } = req.body;
-    const senderId = req.user?._id;
+    const senderId = req.user._id;
     const receiverId = req.params.id;
 
     if (!senderId || !receiverId) {
@@ -127,31 +127,29 @@ export const getMessages = async (req, res) => {
     let imageUrl = null;
     let audioUrl = null;
 
-    // Handle image upload
-    if (req.files?.image?.tempFilePath) {
-      try {
-        const result = await cloudinary.uploader.upload(req.files.image.tempFilePath, {
-          folder: "chat_images",
-        });
-        imageUrl = result.secure_url;
-      } catch (err) {
-        console.error("Image upload failed:", err);
-        return res.status(500).json({ message: "Image upload failed" });
+    if (req.files?.image) {
+      if (!req.files.image.tempFilePath) {
+        console.error("Image tempFilePath missing");
+        return res.status(500).json({ message: "Image tempFilePath missing" });
       }
+
+      const result = await cloudinary.uploader.upload(req.files.image.tempFilePath, {
+        folder: "chat_images",
+      });
+      imageUrl = result.secure_url;
     }
 
-    // Handle audio upload
-    if (req.files?.audio?.tempFilePath) {
-      try {
-        const result = await cloudinary.uploader.upload(req.files.audio.tempFilePath, {
-          folder: "chat_audio",
-          resource_type: "video",
-        });
-        audioUrl = result.secure_url;
-      } catch (err) {
-        console.error("Audio upload failed:", err);
-        return res.status(500).json({ message: "Audio upload failed" });
+    if (req.files?.audio) {
+      if (!req.files.audio.tempFilePath) {
+        console.error("Audio tempFilePath missing");
+        return res.status(500).json({ message: "Audio tempFilePath missing" });
       }
+
+      const result = await cloudinary.uploader.upload(req.files.audio.tempFilePath, {
+        resource_type: "video",
+        folder: "chat_audio",
+      });
+      audioUrl = result.secure_url;
     }
 
     const message = new Message({
@@ -163,7 +161,6 @@ export const getMessages = async (req, res) => {
     });
 
     await message.save();
-
     res.status(201).json({ message: "Message sent", data: message });
   } catch (err) {
     console.error("SendMessage failed:", err);

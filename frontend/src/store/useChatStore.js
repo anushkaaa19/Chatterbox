@@ -84,7 +84,8 @@ export const useChatStore = create((set, get) => ({
     } finally {
       set({ isMessagesLoading: false });
     }
-  },sendMessage: async (messageData) => {
+  },
+  sendMessage: async (messageData) => {
     const selectedUser = get().selectedUser;
     if (!selectedUser) throw new Error("No user selected");
   
@@ -92,11 +93,10 @@ export const useChatStore = create((set, get) => ({
       const formData = new FormData();
       formData.append("text", messageData.text || "");
   
-      // Convert data URL to File
-      const dataURLtoFile = async (dataUrl, filename, type) => {
+      const dataURLtoFile = async (dataUrl, filename, mimeType) => {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
-        return new File([blob], filename, { type });
+        return new File([blob], filename, { type: mimeType });
       };
   
       if (messageData.image) {
@@ -122,10 +122,8 @@ export const useChatStore = create((set, get) => ({
       return res.data;
     } catch (err) {
       console.error("Full error:", err);
-      const errorMsg = err.response?.data?.message ||
-                      err.message ||
-                      "Failed to send message";
-      toast.error(errorMsg);
+      const msg = err.response?.data?.message || err.message || "Failed to send message";
+      toast.error(msg);
       throw err;
     }
   },  
