@@ -5,15 +5,9 @@ import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 import { auth, provider, signInWithPopup, signOut } from "../firebase.jsx";
 
-const API_URL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:5001/api"
-    : "https://chatterbox-backend-rus5.onrender.com/api";
+const API_URL ="https://chatterbox-backend-rus5.onrender.com/api";
 
-const SOCKET_URL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:5001"
-    : "https://chatterbox-backend-rus5.onrender.com/api";
+const SOCKET_URL ="https://chatterbox-backend-rus5.onrender.com/api";
 
 export const useAuthStore = create(
   persist(
