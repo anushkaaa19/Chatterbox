@@ -41,12 +41,22 @@ app.use((req, res, next) => {
   }
 });
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoutes);
 try {
-  app.use('/api/groups', groupRoutes);
+  app.use("/api/auth", authRoutes);
 } catch (err) {
-  console.error("Group route error:", err);
+  console.error("❌ Error in authRoutes:", err);
+}
+
+try {
+  app.use("/api/messages", messageRoutes);
+} catch (err) {
+  console.error("❌ Error in messageRoutes:", err);
+}
+
+try {
+  app.use("/api/groups", groupRoutes);
+} catch (err) {
+  console.error("❌ Error in groupRoutes:", err);
 }
 
 
