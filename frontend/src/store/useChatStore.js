@@ -69,6 +69,11 @@ export const useChatStore = create((set, get) => ({
   },
 
   getMessages: async (userId) => {
+    if (!userId) {
+      toast.error("User ID is missing while fetching messages");
+      return;
+    }
+  
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/chat/${userId}`);
@@ -80,14 +85,15 @@ export const useChatStore = create((set, get) => ({
       set({ isMessagesLoading: false });
     }
   },
+  
 
   sendMessage: async (messageData) => {
     const { selectedUser } = get();
     if (!selectedUser?._id) {
-      const err = new Error("No recipient selected");
-      toast.error(err.message);
-      throw err;
+      toast.error("Cannot send message: No recipient selected");
+      return;
     }
+    
 
     try {
       const res = await axiosInstance.post(

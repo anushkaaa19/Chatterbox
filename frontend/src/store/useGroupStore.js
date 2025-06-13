@@ -65,6 +65,11 @@ export const useGroupStore = create((set, get) => ({
   },
 
   getGroupMessages: async (groupId) => {
+    if (!groupId) {
+      toast.error("Group ID is missing while fetching messages");
+      return [];
+    }
+  
     try {
       const { data } = await axiosInstance.get(`/groups/${groupId}/messages`);
       const messages = data.messages || [];
@@ -72,24 +77,30 @@ export const useGroupStore = create((set, get) => ({
       return messages;
     } catch (err) {
       console.error("Error loading group messages", err);
+      toast.error("Failed to load group messages");
       return [];
     }
   },
-
+  
   sendGroupMessage: async (groupId, messageData) => {
+    if (!groupId) {
+      toast.error("No group selected");
+      return;
+    }
+  
     try {
       const res = await axiosInstance.post(
         `/groups/${groupId}/messages`,
         messageData
       );
       return res.data?.message;
-      // Server will handle the socket emission
     } catch (err) {
       console.error("Error sending message", err);
       toast.error("Failed to send group message");
       throw err;
     }
   },
+  
 
   subscribeToGroupMessages: (groupId) => {
     const authSocket = useAuthStore.getState().socket;

@@ -89,9 +89,12 @@ export const useAuthStore = create(
         } catch (error) {
           if (error.response?.status === 401) {
             set({ authUser: null });
+          } else {
+            console.error("Auth check error:", error); // <-- Add this
           }
           return null;
-        } finally {
+        }
+        finally {
           set({ isCheckingAuth: false });
         }
       },
@@ -113,9 +116,12 @@ export const useAuthStore = create(
           toast.success("Signed in with Google!");
         } catch (error) {
           await signOut(auth);
-          toast.error("Google sign-in failed");
+          const message = error.response?.data?.message || error.message || "Google sign-in failed";
+          toast.error(message);
           throw error;
         }
+
+        
       },
 
       signup: async (data) => {
@@ -157,8 +163,14 @@ export const useAuthStore = create(
         try {
           await signOut(auth);
           await axiosInstance.post("/auth/logout");
-          set({ authUser: null, onlineUsers: [] });
-          get().disconnectSocket();
+          set({
+            authUser: null,
+            onlineUsers: [],
+            socket: null,
+            resetEmail: null,
+            resetToken: null,
+          });
+                    get().disconnectSocket();
           toast.success("Logged out successfully");
         } catch (error) {
           console.error("Logout error:", error);
@@ -184,23 +196,24 @@ export const useAuthStore = create(
       },
       
       
-
       connectSocket: () => {
         const { authUser, socket } = get();
-        if (!authUser?._id || socket?.connected) return;
-
+        if (!authUser?._id) return;
+      
+        if (socket?.connected) socket.disconnect(); // force disconnect if stale
+      
         const sock = io(SOCKET_URL, {
           query: { userId: authUser._id },
           transports: ["websocket"],
         });
-
+      
         sock.on("connect", () => console.log("Socket connected"));
         sock.on("disconnect", () => console.log("Socket disconnected"));
         sock.on("getOnlineUsers", (users) => set({ onlineUsers: users }));
-
+      
         set({ socket: sock });
       },
-
+      
       disconnectSocket: () => {
         const { socket } = get();
         if (socket?.connected) {
