@@ -85,38 +85,45 @@ export const useChatStore = create((set, get) => ({
       set({ isMessagesLoading: false });
     }
   },
-  sendMessage: async (receiverId, messageData) => {
-    if (!receiverId) throw new Error("No user selected");
+  sendMessage: async (messageData) => {
+    const selectedUser = get().selectedUser;
+    if (!selectedUser) throw new Error("No user selected");
   
     try {
       const formData = new FormData();
-      if (messageData.text?.trim()) {
-        formData.append("text", messageData.text.trim());
+      formData.append("text", messageData.text || "");
+  
+      const dataURLtoFile = async (dataUrl, filename, mimeType) => {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        return new File([blob], filename, { type: mimeType });
+      };
+  
+      if (messageData.image) {
+        const imageFile = await dataURLtoFile(messageData.image, "image.png", "image/png");
+        formData.append("image", imageFile);
       }
   
-      if (messageData.image instanceof File) {
-        formData.append("image", messageData.image);
-      }
-  
-      if (messageData.audio instanceof Blob) {
-        const audioFile = new File([messageData.audio], "audio.webm", { type: "audio/webm" });
+      if (messageData.audio) {
+        const audioFile = await dataURLtoFile(messageData.audio, "audio.webm", "audio/webm");
         formData.append("audio", audioFile);
       }
   
+      // ✅ This makes sure browser finalizes the FormData correctly
       const res = await axiosInstance.post(
-        `/messages/chat/${receiverId}`,
+        `/messages/chat/${selectedUser._id}`,
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true, // if your auth relies on cookies
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
   
-      return res.data.data;
+      return res.data;
     } catch (err) {
       console.error("Full error:", err);
-      const msg = err.response?.data?.message || err.message || "Failed to send message";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Failed to send message");
       throw err;
     }
   },
