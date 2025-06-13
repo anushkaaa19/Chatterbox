@@ -86,12 +86,10 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
-  sendMessage: async (messageData) => {
-    const { selectedUser } = get();
-    if (!selectedUser?._id) {
-      toast.error("No recipient selected");
-      return;
-    }
+  sendMessage: async (formData) => {
+    const selectedUser = get().selectedUser;
+    if (!selectedUser) throw new Error("No user selected");
+  
   
     try {
       const formData = new FormData();

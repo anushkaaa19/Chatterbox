@@ -156,30 +156,34 @@ const MessageInput = () => {
       reader.readAsDataURL(blob);
     });
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!text.trim() && !fileData && !audioBlob) return;
-
-    let audioDataUrl = null;
-    if (audioBlob) {
-      audioDataUrl = await blobToDataURL(audioBlob);
-    }
-
-    try {
-      await sendMessage({
-        text: text.trim(),
-        image: fileData,
-        audio: audioDataUrl,
-      });
-
-      setText("");
-      removeFile();
-      removeAudio();
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      toast.error("Failed to send message");
-    }
-  };
+    const handleSendMessage = async (e) => {
+      e.preventDefault();
+      if (!text.trim() && !fileData && !audioBlob) return;
+    
+      const formData = new FormData();
+      formData.append("text", text.trim());
+    
+      // Append image file if selected
+      if (fileInputRef.current?.files[0]) {
+        formData.append("image", fileInputRef.current.files[0]);
+      }
+    
+      // Append audio blob if recorded
+      if (audioBlob) {
+        formData.append("audio", audioBlob, "recording.webm");
+      }
+    
+      try {
+        await sendMessage(formData); // You now send FormData
+        setText("");
+        removeFile();
+        removeAudio();
+      } catch (error) {
+        console.error("Failed to send message:", error);
+        toast.error("Failed to send message");
+      }
+    };
+    
 
   return (
     <div className="p-4 w-full">
