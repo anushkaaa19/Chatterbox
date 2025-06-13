@@ -131,7 +131,7 @@ const Sidebar = () => {
         )}
       </div>
 
-      {/* 👥 List Section */}
+      {/* 👥 List Section - FIXED LAYOUT */}
       <div className="overflow-y-auto w-full py-2">
         {!showGroups &&
           filteredUsers.map((user) => (
@@ -141,11 +141,11 @@ const Sidebar = () => {
                 setSelectedUser(user);
                 setSelectedGroup(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
+              className={`w-full p-3 flex items-center transition-colors ${
                 selectedUser?._id === user._id ? "bg-base-200" : "hover:bg-base-200"
               }`}
             >
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <img
                   src={user.profilePic || "/avatar.png"}
                   alt={user.fullName}
@@ -155,9 +155,11 @@ const Sidebar = () => {
                   <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-base-100" />
                 )}
               </div>
-              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
+              
+              {/* FIXED NAME DISPLAY */}
+              <div className="ml-3 text-left min-w-0 overflow-hidden">
                 <div className="font-medium truncate">{user.fullName}</div>
-                <div className="text-xs opacity-60">
+                <div className="text-xs opacity-60 mt-1">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
@@ -172,20 +174,22 @@ const Sidebar = () => {
                 setSelectedGroup(group);
                 setSelectedUser(null);
               }}
-              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
+              className={`w-full p-3 flex items-center transition-colors ${
                 selectedGroup?._id === group._id ? "bg-base-200" : "hover:bg-base-200"
               }`}
             >
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <img
                   src={group.profilePic || "/avatar.png"}
                   alt={group.name}
                   className="size-12 object-cover rounded-full border border-base-300 shadow"
                 />
               </div>
-              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
+              
+              {/* FIXED NAME DISPLAY */}
+              <div className="ml-3 text-left min-w-0 overflow-hidden">
                 <div className="font-medium truncate">{group.name}</div>
-                <div className="text-xs opacity-60">
+                <div className="text-xs opacity-60 mt-1">
                   {group.members.length} members
                 </div>
               </div>
