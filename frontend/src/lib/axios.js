@@ -2,7 +2,7 @@ import axios from "axios";
 export const axiosInstance = axios.create({
   baseURL: "https://chatterbox-backend-rus5.onrender.com/api",
   withCredentials: true, // IMPORTANT if using cookies
-  timeout:2000,
+  timeout:15000,
 });
 
 axiosInstance.interceptors.response.use(
