@@ -86,10 +86,9 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
-  sendMessage: async (formData) => {
+  sendMessage: async (messageData) => {
     const selectedUser = get().selectedUser;
     if (!selectedUser) throw new Error("No user selected");
-  
   
     try {
       const formData = new FormData();
@@ -97,13 +96,13 @@ export const useChatStore = create((set, get) => ({
   
       // Handle image upload
       if (messageData.image) {
-        const blob = await fetch(messageData.image).then(r => r.blob());
+        const blob = await fetch(messageData.image).then((r) => r.blob());
         formData.append("image", blob, "message-image.png");
       }
   
       // Handle audio upload
       if (messageData.audio) {
-        const blob = await fetch(messageData.audio).then(r => r.blob());
+        const blob = await fetch(messageData.audio).then((r) => r.blob());
         formData.append("audio", blob, "message-audio.webm");
       }
   
@@ -114,21 +113,20 @@ export const useChatStore = create((set, get) => ({
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          withCredentials: true,
         }
       );
   
       return res.data;
     } catch (err) {
       console.error("Full error:", err);
-      const errorMsg = err.response?.data?.message || 
-                      err.message || 
-                      "Failed to send message";
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to send message";
       toast.error(errorMsg);
       throw err;
     }
   },
   
-
   editMessage: async (id, newText) => {
     try {
       const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
