@@ -1,5 +1,5 @@
 import { Group } from "../models/group.model.js";
-import { GroupMessage } from "../models/groupMessage.model.js";
+import { GroupMessage } from "../models/GroupMessage.model.js";
 import { io } from "../lib/socket.js";
 import cloudinary from "../lib/cloudinary.js";
 import { uploadToCloudinary } from "../utils/cloudinary.utils.js";
