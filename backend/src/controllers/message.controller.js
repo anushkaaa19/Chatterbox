@@ -113,6 +113,7 @@ export const getMessages = async (req, res) => {
   }
 };export const sendMessages = async (req, res) => {
   try {
+    const { text } = req.body;
     const senderId = req.user._id;
     const receiverId = req.params.id;
 
@@ -120,64 +121,45 @@ export const getMessages = async (req, res) => {
       return res.status(400).json({ message: "Sender or receiver missing" });
     }
 
-    const contentType = req.headers["content-type"];
-    if (!contentType?.startsWith("multipart/form-data")) {
-      return res.status(400).json({ message: "Content-Type must be multipart/form-data" });
-    }
-
-    let text = "";
     let imageUrl = null;
     let audioUrl = null;
 
-    const Busboy = (await import("busboy")).default;
-    const busboy = new Busboy({ headers: req.headers });
+    // 🖼 Upload image if exists
+    if (req.files?.image?.tempFilePath) {
+      const result = await cloudinary.uploader.upload(
+        req.files.image.tempFilePath,
+        { folder: "chat_images" }
+      );
+      imageUrl = result.secure_url;
+    }
 
-    busboy.on("field", (fieldname, val) => {
-      if (fieldname === "text") {
-        text = val;
-      }
-    });
-
-    busboy.on("file", async (fieldname, file, filename, encoding, mimetype) => {
-      const buffers = [];
-
-      file.on("data", (data) => {
-        buffers.push(data);
-      });
-
-      file.on("end", async () => {
-        const buffer = Buffer.concat(buffers);
-        if (fieldname === "image") {
-          const result = await streamUpload(buffer, "chat_images", "image");
-          imageUrl = result.secure_url;
+    // 🔊 Upload audio if exists
+    if (req.files?.audio?.tempFilePath) {
+      const result = await cloudinary.uploader.upload(
+        req.files.audio.tempFilePath,
+        {
+          resource_type: "video",
+          folder: "chat_audio",
         }
-        if (fieldname === "audio") {
-          const result = await streamUpload(buffer, "chat_audio", "video");
-          audioUrl = result.secure_url;
-        }
-      });
+      );
+      audioUrl = result.secure_url;
+    }
+
+    const message = new Message({
+      sender: senderId,
+      receiver: receiverId,
+      text: text || "",
+      image: imageUrl,
+      audio: audioUrl,
     });
 
-    busboy.on("finish", async () => {
-      const message = new Message({
-        senderId,
-        receiverId,
-        text,
-        image: imageUrl,
-        audio: audioUrl,
-      });
+    await message.save();
 
-      await message.save();
+    // OPTIONAL: Emit via socket.io if needed
+    // const io = req.app.get("io");
+    // io.to(receiverId).emit("newMessage", message);
 
-      const receiverSocketId = getReceiverSocketId(receiverId.toString());
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newMessage", message);
-      }
-
-      res.status(201).json({ message: "Message sent", data: message });
-    });
-
-    req.pipe(busboy);
+    res.status(201).json({ message: "Message sent", data: message });
   } catch (err) {
     console.error("Send message failed:", err);
     res.status(500).json({ message: "Internal server error", error: err.message });
