@@ -75,7 +75,7 @@ const ChatContainer = () => {
     setIsCheckingAuth,
     checkAuth,
   } = useAuthStore();
-
+  
   const messageEndRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -112,9 +112,12 @@ const ChatContainer = () => {
   if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
   const isOwnMessage = (senderId) => {
-    const sender = typeof senderId === "object" ? senderId?._id : senderId;
-    return sender?.toString() === authUser?._id?.toString();
+    if (!senderId || !authUser?._id) return false;
+    const sender = typeof senderId === "object" ? senderId._id : senderId;
+    return sender?.toString() === authUser._id.toString();
   };
+  console.log(isOwnMessage);
+  
   
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
@@ -157,6 +160,8 @@ const ChatContainer = () => {
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(searchTerm ? filteredMessages : messages).map((message) => {
+            console.log("SenderId:", message.senderId, "AuthUser:", authUser._id);
+
             const own = isOwnMessage(message.senderId);
             const likes = Array.isArray(message.likes) ? message.likes : [];
             const likedByCurrentUser = likes.includes(authUser._id);
