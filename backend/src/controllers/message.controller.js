@@ -112,50 +112,65 @@ export const getMessages = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+import { v2 as cloudinary } from "cloudinary";
+import Message from "../models/messageModel.js"; // or whatever your model file is
 
-export const sendMessages = async (req, res) => {
+export const sendMessage = async (req, res) => {
   try {
-    const { content } = req.body;
-    const { id: receiverId } = req.params;
-    const senderId = req.user._id;
+    console.log("Incoming body:", req.body);
+    console.log("Incoming files:", req.files);
 
-    let imageUrl, audioUrl;
+    const { text } = req.body;
+    const senderId = req.user._id; // assuming you have auth middleware setting this
+    const receiverId = req.params.id;
 
-    // Upload image
-    if (req.files?.image?.[0]) {
-      const result = await streamUpload(req.files.image[0].buffer, "message_images");
-      imageUrl = result.secure_url;
+    if (!senderId || !receiverId) {
+      return res.status(400).json({ message: "Sender or receiver missing" });
     }
 
-    // Upload audio
-    if (req.files?.audio?.[0]) {
-      const result = await streamUpload(req.files.audio[0].buffer, "message_audio", "auto");
-      audioUrl = result.secure_url;
+    let imageUrl = null;
+    let audioUrl = null;
+
+    // Handle image upload
+    if (req.files?.image) {
+      try {
+        const result = await cloudinary.uploader.upload(req.files.image.tempFilePath, {
+          folder: "chat_images",
+        });
+        imageUrl = result.secure_url;
+      } catch (err) {
+        console.error("Image upload failed:", err);
+        return res.status(500).json({ message: "Image upload failed" });
+      }
     }
 
-    if (!content && !imageUrl && !audioUrl) {
-      return res.status(400).json({
-        success: false,
-        message: "Message content or file is required",
-      });
+    // Handle audio upload
+    if (req.files?.audio) {
+      try {
+        const result = await cloudinary.uploader.upload(req.files.audio.tempFilePath, {
+          resource_type: "video", // Cloudinary treats .webm as video
+          folder: "chat_audio",
+        });
+        audioUrl = result.secure_url;
+      } catch (err) {
+        console.error("Audio upload failed:", err);
+        return res.status(500).json({ message: "Audio upload failed" });
+      }
     }
 
-    const newMessage = await Message.create({
-      senderId,
-      receiverId,
-      text: content || "",
+    const message = new Message({
+      sender: senderId,
+      receiver: receiverId,
+      text,
       image: imageUrl,
       audio: audioUrl,
     });
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
+    await message.save();
 
-    res.status(201).json({ success: true, message: newMessage });
-  } catch (error) {
-    console.error("sendMessages error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(201).json({ message: "Message sent", data: message });
+  } catch (err) {
+    console.error("SendMessage failed:", err);
+    res.status(500).json({ message: "Internal server error", error: err.message });
   }
 };
