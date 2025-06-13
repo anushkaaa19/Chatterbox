@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Eye, EyeOff,User, Mail, Lock, MessageSquare } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import { Link } from "react-router-dom";
+
 import AuthImagePattern from "../components/AuthImagePattern"
 import { toast } from 'react-hot-toast';
 import GoogleSignIn from "../components/GoogleSignIn";
@@ -162,9 +164,10 @@ const SignUpPage = () => {
           <div className="text-center">
             <p className="text-sm text-base-content/60">
               Already have an account?{" "}
-              <a href="/login" className="text-primary hover:underline">
-                Log in
-              </a>
+              <Link to="/login" className="text-primary hover:underline">
+  Log in
+</Link>
+
             </p>
           </div>
         </div>
