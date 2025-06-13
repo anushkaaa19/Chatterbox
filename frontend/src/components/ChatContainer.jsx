@@ -80,23 +80,29 @@ const ChatContainer = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search bar state
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
+    console.log("🔄 Checking auth status...");
     if (isCheckingAuth) {
       checkAuth();
     }
   }, [isCheckingAuth, checkAuth]);
 
   useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
+    console.log("📡 ChatContainer mounted. Socket:", socket);
+    if (!selectedUser?._id || !socket) {
+      console.warn("⚠️ selectedUser or socket not available");
+      return;
+    }
 
+    console.log("📥 Fetching messages for user:", selectedUser._id);
     getMessages(selectedUser._id);
     subscribeToMessages();
     subscribeToTypingEvents();
 
     return () => {
+      console.log("🧹 Unsubscribing from messages & typing events...");
       unsubscribeFromMessages();
       unsubscribeFromTypingEvents();
     };
@@ -109,7 +115,10 @@ const ChatContainer = () => {
   }, [messages]);
 
   if (isCheckingAuth) return <div>Loading chat...</div>;
-  if (!authUser?._id) return <div>Please log in to use the chat.</div>;
+  if (!authUser?._id) {
+    console.warn("⛔ No authUser found.");
+    return <div>Please log in to use the chat.</div>;
+  }
 
   const isOwnMessage = (senderId) => {
     if (!senderId) return false;
@@ -120,12 +129,14 @@ const ChatContainer = () => {
   };
 
   const handleEdit = (id, oldText) => {
+    console.log("✏️ Edit clicked for message:", id);
     setEditingMessageId(id);
     setEditingOldText(oldText);
     setIsEditing(true);
   };
 
   const handleSaveEdit = (newText) => {
+    console.log("💾 Saving edited message:", newText);
     if (newText && newText !== editingOldText) {
       useChatStore.getState().editMessage(editingMessageId, newText);
     }
@@ -133,6 +144,7 @@ const ChatContainer = () => {
   };
 
   const handleLike = (id) => {
+    console.log("❤️ Toggling like for message:", id);
     useChatStore.getState().toggleLike(id);
   };
 
@@ -140,11 +152,15 @@ const ChatContainer = () => {
     msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
 
+  console.log("📨 Total messages to display:", messages.length);
+  if (searchTerm) {
+    console.log("🔍 Filtered messages:", filteredMessages.length);
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
-      {/* ✅ Search Bar */}
       <div className="px-4 pt-4">
         <input
           type="text"
@@ -160,6 +176,16 @@ const ChatContainer = () => {
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(searchTerm ? filteredMessages : messages).map((message) => {
+            console.log("📨 Rendering message:", message);
+
+            const hasContent =
+              message.text || message.image || message.file || message.audio;
+
+            if (!hasContent) {
+              console.warn("⚠️ Message has no content:", message);
+              return null;
+            }
+
             const own = isOwnMessage(message.senderId);
             const likes = Array.isArray(message.likes) ? message.likes : [];
             const likedByCurrentUser = likes.includes(authUser._id);
