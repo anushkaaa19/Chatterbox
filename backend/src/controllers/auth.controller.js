@@ -179,7 +179,6 @@ export const login = async (req, res) => {
       sameSite: "None",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
-      domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
     });
 
     res.status(200).json({ message: "Logged in successfully", user: { id: user._id, email: user.email
