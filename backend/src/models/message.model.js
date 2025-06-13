@@ -2,24 +2,20 @@ import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema(
   {
-    senderId: {
+    sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    receiverId: {
+    receiver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    text: {
-      type: String,
-    },
-    image: {
-      type: String,
-    },
-    audio: {
-      type: String, // ✅ Add this to support audio messages
+    content: {
+      text: { type: String, default: "" },
+      image: { type: String, default: null },
+      audio: { type: String, default: null },
     },
     seen: {
       type: Boolean,
@@ -29,7 +25,7 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    likes: [
+    likedBy: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -41,10 +37,9 @@ const messageSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // createdAt and updatedAt
+    timestamps: true,
   }
 );
 
 const Message = mongoose.model("Message", messageSchema);
-
 export default Message;

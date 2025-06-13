@@ -22,6 +22,7 @@ const Sidebar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showGroups, setShowGroups] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   useEffect(() => {
     getUsers();
@@ -49,16 +50,34 @@ const Sidebar = () => {
               {showGroups ? "Groups" : "Contacts"}
             </span>
           </div>
-          <button
-            onClick={() => setShowGroups(!showGroups)}
-            className="text-sm text-blue-500 underline hover:text-blue-600 hidden lg:block"
-          >
-            {showGroups ? "Contacts" : "Groups"}
-          </button>
-          <button className="md:hidden text-blue-500">
-            <Search className="size-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGroups(!showGroups)}
+              className="text-sm text-blue-500 underline hover:text-blue-600 hidden lg:block"
+            >
+              {showGroups ? "Contacts" : "Groups"}
+            </button>
+            <button 
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className="md:hidden text-blue-500"
+            >
+              <Search className="size-5" />
+            </button>
+          </div>
         </div>
+
+        {/* 🔍 Search - Mobile (toggled) */}
+        {showMobileSearch && (
+          <div className="mt-3 md:hidden">
+            <input
+              type="text"
+              placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-md border border-base-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
 
         {/* 🔍 Search - Medium and Large screens */}
         <div className="mt-3 hidden md:block">
@@ -127,10 +146,17 @@ const Sidebar = () => {
                   <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-zinc-900" />
                 )}
               </div>
-              {/* Show names on medium screens, full info on large */}
-              <div className={`${window.innerWidth < 768 ? 'hidden' : 'text-left min-w-0'}`}>
+              {/* Show names on all screens except mobile */}
+              <div className="hidden md:block text-left min-w-0">
                 <div className="font-medium truncate">{user.fullName}</div>
                 <div className="text-sm text-zinc-400 hidden lg:block">
+                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                </div>
+              </div>
+              {/* Mobile name display */}
+              <div className="md:hidden absolute left-20 ml-2 text-left min-w-0">
+                <div className="font-medium truncate max-w-[120px]">{user.fullName}</div>
+                <div className="text-xs text-zinc-400">
                   {onlineUsers.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
@@ -156,10 +182,17 @@ const Sidebar = () => {
                   className="size-12 object-cover rounded-full"
                 />
               </div>
-              {/* Show names on medium screens, full info on large */}
-              <div className={`${window.innerWidth < 768 ? 'hidden' : 'text-left min-w-0'}`}>
+              {/* Show names on all screens except mobile */}
+              <div className="hidden md:block text-left min-w-0">
                 <div className="font-medium truncate">{group.name}</div>
                 <div className="text-sm text-zinc-400 hidden lg:block">
+                  {group.members.length} members
+                </div>
+              </div>
+              {/* Mobile name display */}
+              <div className="md:hidden absolute left-20 ml-2 text-left min-w-0">
+                <div className="font-medium truncate max-w-[120px]">{group.name}</div>
+                <div className="text-xs text-zinc-400">
                   {group.members.length} members
                 </div>
               </div>

@@ -4,6 +4,9 @@ import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
+// Global direct message socket handler
+let dmMessageHandler = null;
+
 export const useChatStore = create((set, get) => ({
   users: [],
   messages: [],
@@ -138,25 +141,44 @@ export const useChatStore = create((set, get) => ({
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
-    if (!selectedUser) return;
-
     const socket = useAuthStore.getState().socket;
+    if (!selectedUser || !socket) return;
 
-    socket.on("newMessage", (newMessage) => {
+    // Unsubscribe previous
+    if (dmMessageHandler) {
+      socket.off("newMessage", dmMessageHandler);
+    }
+
+    // New handler
+    dmMessageHandler = (newMessage) => {
       if (newMessage.senderId !== selectedUser._id) return;
 
-      set({
-        messages: [...get().messages, newMessage],
+      set((state) => {
+        const exists = state.messages.some(m => m._id === newMessage._id);
+        return exists
+          ? state
+          : { messages: [...state.messages, newMessage] };
       });
-    });
+    };
+
+    socket.on("newMessage", dmMessageHandler);
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    if (socket) {
-      socket.off("newMessage");
+    if (socket && dmMessageHandler) {
+      socket.off("newMessage", dmMessageHandler);
+      dmMessageHandler = null;
     }
   },
 
-  setSelectedUser: (user) => set({ selectedUser: user }),
+  setSelectedUser: (user) => {
+    get().unsubscribeFromMessages();
+    set({ selectedUser: user, messages: [] });
+
+    if (user?._id) {
+      get().getMessages(user._id);
+      get().subscribeToMessages();
+    }
+  },
 }));

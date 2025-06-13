@@ -1,243 +1,188 @@
 import { useEffect, useRef, useState } from "react";
+import { Image, Mic, StopCircle, Send, X } from "lucide-react";
+import toast from "react-hot-toast";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { MessageOptionsMenu } from "./MessageOptionsMenu";
-import ChatHeader from "./ChatHeader";
-import MessageInput from "./MessageInput";
-import MessageSkeleton from "./skeletons/MessageSkeleton";
-import { formatMessageTime } from "../lib/utils";
 
-// ✅ Force-download Cloudinary PDF URL generator
-// ✅ Works with Cloudinary raw PDF URLs
+// Replace with your actual values
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME";
+const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET";
 
+const uploadToCloudinary = async (file, resourceType = "auto") => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
 
+  const res = await fetch(`${CLOUDINARY_URL}/${resourceType}/upload`, {
+    method: "POST",
+    body: formData,
+  });
 
-const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
-  const [newText, setNewText] = useState(oldText);
-
-  useEffect(() => {
-    setNewText(oldText);
-  }, [oldText]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
-        <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
-        <textarea
-          value={newText}
-          onChange={(e) => setNewText(e.target.value)}
-          className="w-full p-3 text-sm border border-zinc-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={4}
-          placeholder="Edit your message..."
-        />
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSave(newText.trim())}
-            disabled={newText.trim() === ""}
-            className={`px-4 py-2 text-sm rounded-md transition font-medium ${
-              newText.trim() === ""
-                ? "bg-blue-300 text-white cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const data = await res.json();
+  return data.secure_url;
 };
 
-const ChatContainer = () => {
-  const {
-    messages,
-    getMessages,
-    isMessagesLoading,
-    selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    subscribeToTypingEvents,
-    unsubscribeFromTypingEvents,
-    typingUsers,
-  } = useChatStore();
+const MessageInput = () => {
+  const [text, setText] = useState("");
+  const [imagePreview, setImagePreview] = useState(null);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recorderRef = useRef(null);
 
-  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
-
-  const messageEndRef = useRef(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState(null);
-  const [editingOldText, setEditingOldText] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const { selectedUser, sendMessage } = useChatStore();
+  const { authUser, socket } = useAuthStore();
 
   useEffect(() => {
-    if (isCheckingAuth) checkAuth();
-  }, [isCheckingAuth, checkAuth]);
+    if (!socket || !selectedUser) return;
 
-  useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
+    const typingTimeout = setTimeout(() => {
+      socket.emit("stopTyping", { to: selectedUser._id });
+    }, 3000);
 
-    getMessages(selectedUser._id);
-    subscribeToMessages();
-    subscribeToTypingEvents();
+    return () => clearTimeout(typingTimeout);
+  }, [text]);
 
-    return () => {
-      unsubscribeFromMessages();
-      unsubscribeFromTypingEvents();
-    };
-  }, [selectedUser?._id, socket]);
-
-  useEffect(() => {
-    if (messageEndRef.current && messages.length) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+  const handleTyping = () => {
+    if (socket && selectedUser) {
+      socket.emit("typing", { to: selectedUser._id });
     }
-  }, [messages]);
-
-  const isOwnMessage = (senderId) =>
-    senderId?._id === authUser?._id || senderId === authUser?._id;
-
-  const handleEdit = (id, oldText) => {
-    setEditingMessageId(id);
-    setEditingOldText(oldText);
-    setIsEditing(true);
   };
 
-  const handleSaveEdit = (newText) => {
-    if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
     }
-    setIsEditing(false);
+    setImagePreview(file);
   };
 
-  const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
+  const handleAudioStart = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const audio = new Blob(chunks, { type: "audio/webm" });
+        setAudioBlob(audio);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+      recorderRef.current = recorder;
+      setIsRecording(true);
+    } catch (err) {
+      toast.error("Microphone access denied");
+    }
   };
 
-  const filteredMessages = messages.filter((msg) =>
-    msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  );
+  const handleAudioStop = () => {
+    if (recorderRef.current) {
+      recorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
 
-  if (isCheckingAuth) return <div className="p-4">Loading chat...</div>;
-  if (!authUser?._id) return <div className="p-4">Please log in to use the chat.</div>;
+  const resetInputs = () => {
+    setText("");
+    setImagePreview(null);
+    setAudioBlob(null);
+  };
+
+  const handleSend = async () => {
+    if (!selectedUser?._id || (!text && !imagePreview && !audioBlob)) return;
+
+    const messageData = {};
+    if (text) messageData.text = text;
+
+    try {
+      if (imagePreview) {
+        const imgUrl = await uploadToCloudinary(imagePreview, "image");
+        messageData.image = imgUrl;
+      }
+
+      if (audioBlob) {
+        const audioUrl = await uploadToCloudinary(audioBlob, "video");
+        messageData.audio = audioUrl;
+      }
+
+      await sendMessage(selectedUser._id, messageData);
+      resetInputs();
+    } catch (err) {
+      toast.error("Failed to send message");
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
-      <ChatHeader />
+    <div className="px-4 py-3 bg-white border-t border-zinc-300 flex items-center gap-3">
+      <label className="cursor-pointer">
+        <Image className="w-5 h-5 text-zinc-500" />
+        <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+      </label>
 
-      {/* 🔍 Search Bar */}
-      <div className="px-4 pt-4">
-        <input
-          type="text"
-          placeholder="Search messages..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {isMessagesLoading ? (
-        <MessageSkeleton />
+      {!isRecording ? (
+        <button onClick={handleAudioStart}>
+          <Mic className="w-5 h-5 text-zinc-500" />
+        </button>
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {(searchTerm ? filteredMessages : messages).map((message) => {
-            const own = isOwnMessage(message.senderId);
-            const likes = Array.isArray(message.likes) ? message.likes : [];
-            const likedByCurrentUser = likes.includes(authUser._id);
-
-            return (
-              <div
-                key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
-              >
-                <div className="chat-image avatar">
-                  <div className="size-10 rounded-full border">
-                    <img
-                      src={
-                        own
-                          ? authUser.profilePic || "/avatar.png"
-                          : selectedUser?.profilePic || "/avatar.png"
-                      }
-                      alt="Profile"
-                    />
-                  </div>
-                </div>
-
-                <div className="chat-header mb-1">
-                  <time className="text-xs opacity-50 ml-1">
-                    {formatMessageTime(message.createdAt)}
-                  </time>
-                </div>
-
-                <div className="chat-bubble flex flex-col relative max-w-[80%]">
-                  {message.text && (
-                    <>
-                      <p>
-                        {message.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
-                      {likedByCurrentUser && (
-                        <button
-                          onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
-                          aria-label="Unlike message"
-                        >
-                          ❤️
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="Attachment"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-                  {message.audio && (
-                    <audio controls src={message.audio} className="mt-2 max-w-xs" />
-                  )}
-
-                  <div className="hidden group-hover:block absolute top-0 right-0 ml-2">
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      message={message}
-                      onEdit={() => handleEdit(message._id, message.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {searchTerm && filteredMessages.length === 0 && (
-            <p className="text-center text-zinc-500 py-8">No messages found.</p>
-          )}
-
-          <div ref={messageEndRef} />
-        </div>
+        <button onClick={handleAudioStop}>
+          <StopCircle className="w-5 h-5 text-red-500" />
+        </button>
       )}
 
-      <MessageInput />
-
-      <EditMessageModal
-        isOpen={isEditing}
-        oldText={editingOldText}
-        onClose={() => setIsEditing(false)}
-        onSave={handleSaveEdit}
+      <textarea
+        rows={1}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          handleTyping();
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder="Type a message..."
+        className="flex-1 resize-none border border-zinc-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
       />
+
+      <button
+        onClick={handleSend}
+        disabled={!text && !imagePreview && !audioBlob}
+        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
+      >
+        <Send className="w-4 h-4" />
+      </button>
+
+      {/* Preview UI */}
+      {(imagePreview || audioBlob) && (
+        <div className="fixed bottom-20 right-4 bg-white border p-3 rounded-lg shadow-xl">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium mb-2">Preview</p>
+            <button onClick={resetInputs}>
+              <X className="w-4 h-4 text-red-500" />
+            </button>
+          </div>
+          {imagePreview && (
+            <img
+              src={URL.createObjectURL(imagePreview)}
+              alt="Preview"
+              className="max-w-xs rounded-md mt-2"
+            />
+          )}
+          {audioBlob && (
+            <audio controls src={URL.createObjectURL(audioBlob)} className="mt-2 w-64" />
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-export default ChatContainer;
+export default MessageInput;

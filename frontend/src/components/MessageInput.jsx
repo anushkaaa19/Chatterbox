@@ -1,15 +1,27 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { useEffect } from "react";
-import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
+
+// Utility to upload files to Cloudinary
+const uploadToCloudinary = async (file, resourceType = "auto") => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "your_upload_preset"); // change this
+  const res = await fetch(`https://api.cloudinary.com/v1_1/your_cloud_name/${resourceType}/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  const data = await res.json();
+  return data.secure_url;
+};
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -17,27 +29,21 @@ const MessageInput = () => {
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
 
-  const { sendMessage } = useChatStore();
+  const { sendMessage, selectedUser } = useChatStore();
+  const { socket, authUser } = useAuthStore();
 
-  // -------- Image Handling --------
-  const socket = useAuthStore((state) => state.socket);
-  const authUser = useAuthStore((state) => state.authUser);
-  const selectedUser = useChatStore((state) => state.selectedUser);
-
-
+  // Typing indicator
   useEffect(() => {
     if (!socket || !authUser || !selectedUser) return;
-  
-    let typingTimeout;
-  
+    let timeout;
     if (text.trim()) {
       socket.emit("typing", {
         fromUserId: authUser._id,
         toUserId: selectedUser._id,
       });
-  
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
+
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
         socket.emit("stopTyping", {
           fromUserId: authUser._id,
           toUserId: selectedUser._id,
@@ -49,19 +55,19 @@ const MessageInput = () => {
         toUserId: selectedUser._id,
       });
     }
-  
-    return () => clearTimeout(typingTimeout);
+    return () => clearTimeout(timeout);
   }, [text, socket, authUser, selectedUser]);
+
+  // Image Handling
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return; // No file selected
+    if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result);
-    reader.readAsDataURL(file);
+    const imageURL = URL.createObjectURL(file);
+    setImagePreview(imageURL);
   };
 
   const removeImage = () => {
@@ -69,11 +75,11 @@ const MessageInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // -------- Audio Recording --------
+  // Audio Recording
   const toggleAudioRecording = async () => {
-    if (isRecordingAudio) {
+    if (isRecording) {
       mediaRecorderRef.current.stop();
-      setIsRecordingAudio(false);
+      setIsRecording(false);
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -87,11 +93,11 @@ const MessageInput = () => {
         mediaRecorderRef.current.onstop = () => {
           const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
           setAudioBlob(blob);
-          stream.getTracks().forEach((track) => track.stop()); // Stop mic stream after recording
+          stream.getTracks().forEach((track) => track.stop());
         };
 
         mediaRecorderRef.current.start();
-        setIsRecordingAudio(true);
+        setIsRecording(true);
       } catch {
         toast.error("Microphone access denied");
       }
@@ -102,10 +108,10 @@ const MessageInput = () => {
     setAudioBlob(null);
   };
 
-  // -------- Voice-to-text (Speech Recognition) --------
+  // Speech Recognition
   const toggleSpeechRecognition = () => {
     if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-      toast.error("Speech recognition not supported in this browser");
+      toast.error("Speech recognition not supported");
       return;
     }
 
@@ -120,108 +126,88 @@ const MessageInput = () => {
       recognitionRef.current.lang = "en-US";
 
       recognitionRef.current.onresult = (event) => {
-        let interimTranscript = "";
-        let finalTranscript = text;
-
+        let interim = "";
+        let finalText = text;
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + " ";
-          } else {
-            interimTranscript += transcript;
-          }
+          event.results[i].isFinal ? (finalText += transcript + " ") : (interim += transcript);
         }
-        setText(finalTranscript + interimTranscript);
+        setText(finalText + interim);
       };
 
-      recognitionRef.current.onerror = (event) => {
-        toast.error("Speech recognition error: " + event.error);
+      recognitionRef.current.onerror = (e) => {
+        toast.error("Speech error: " + e.error);
         setIsRecognizing(false);
       };
 
-      recognitionRef.current.onend = () => {
-        setIsRecognizing(false);
-      };
-
+      recognitionRef.current.onend = () => setIsRecognizing(false);
       recognitionRef.current.start();
       setIsRecognizing(true);
     }
   };
 
-  // Helper to convert blob to base64 string
-  const blobToDataURL = (blob) =>
-    new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-
-  // -------- Send Message --------
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !audioBlob) return;
 
-    let audioDataUrl = null;
-    if (audioBlob) {
-      audioDataUrl = await blobToDataURL(audioBlob);
-    }
-
     try {
+      let imageUrl = null;
+      let audioUrl = null;
+
+      if (fileInputRef.current?.files[0]) {
+        imageUrl = await uploadToCloudinary(fileInputRef.current.files[0], "image");
+      }
+
+      if (audioBlob) {
+        const audioFile = new File([audioBlob], "audio.webm", { type: "audio/webm" });
+        audioUrl = await uploadToCloudinary(audioFile, "video");
+      }
+
       await sendMessage({
+        to: selectedUser._id,
         text: text.trim(),
-        image: imagePreview,
-        audio: audioDataUrl,
+        image: imageUrl,
+        audio: audioUrl,
       });
 
-      // Reset all inputs after sending
       setText("");
       setImagePreview(null);
       setAudioBlob(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch (err) {
+      console.error("Send failed", err);
       toast.error("Failed to send message");
     }
   };
 
   return (
     <div className="p-4 w-full">
-      {/* Image preview */}
+      {/* Image Preview */}
       {imagePreview && (
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2">
           <div className="relative">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
-            />
+            <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
             <button
               onClick={removeImage}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
-              type="button"
-              aria-label="Remove image"
             >
-              <X className="size-3" />
+              <X size={12} />
             </button>
           </div>
         </div>
       )}
 
-      {/* Audio playback */}
+      {/* Audio Preview */}
       {audioBlob && (
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2">
           <audio controls src={URL.createObjectURL(audioBlob)} />
-          <button
-            onClick={removeAudio}
-            className="btn btn-sm btn-circle ml-2"
-            type="button"
-            aria-label="Remove audio"
-          >
+          <button onClick={removeAudio} className="btn btn-sm btn-circle">
             <X size={16} />
           </button>
         </div>
       )}
 
+      {/* Message Input Form */}
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex gap-2">
           <input
@@ -230,7 +216,7 @@ const MessageInput = () => {
             placeholder="Type a message..."
             value={text}
             onChange={(e) => setText(e.target.value)}
-            disabled={isRecordingAudio}
+            disabled={isRecording}
           />
 
           <input
@@ -239,45 +225,43 @@ const MessageInput = () => {
             className="hidden"
             ref={fileInputRef}
             onChange={handleImageChange}
-            disabled={isRecordingAudio}
+            disabled={isRecording}
           />
 
           <button
             type="button"
             className={`btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
-            disabled={isRecordingAudio}
+            disabled={isRecording}
             title="Upload Image"
           >
             <Image size={20} />
           </button>
         </div>
 
-        {/* Voice to Text button */}
+        {/* Voice-to-Text */}
         <button
           type="button"
           className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
           onClick={toggleSpeechRecognition}
+          disabled={isRecording}
           title={isRecognizing ? "Stop Voice to Text" : "Start Voice to Text"}
-          disabled={isRecordingAudio}
-          aria-pressed={isRecognizing}
         >
-          <MessageCircle size={24} />
+          <MessageCircle size={22} />
         </button>
-
-        {/* Audio Record button */}
+        
+        {/* Record Audio */}
         <button
           type="button"
-          className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
+          className={`btn btn-circle ${isRecording ? "text-red-500" : "text-zinc-400"}`}
           onClick={toggleAudioRecording}
-          title={isRecordingAudio ? "Stop Recording" : "Record Audio"}
           disabled={isRecognizing}
-          aria-pressed={isRecordingAudio}
+          title={isRecording ? "Stop Recording" : "Record Audio"}
         >
-          {isRecordingAudio ? <StopCircle size={24} /> : <Mic size={24} />}
+          {isRecording ? <StopCircle size={22} /> : <Mic size={22} />}
         </button>
 
-        {/* Send button */}
+        {/* Send Button */}
         <button
           type="submit"
           className="btn btn-sm btn-circle"
