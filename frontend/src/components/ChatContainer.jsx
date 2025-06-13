@@ -20,8 +20,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-base-100 rounded-xl p-6 shadow-2xl w-full max-w-md border border-base-300">
-        <h2 className="text-xl font-semibold text-base-content mb-4">Edit Message</h2>
-
+        <h2 className="text-xl font-semibold mb-4">Edit Message</h2>
         <textarea
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
@@ -29,22 +28,17 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
           rows={4}
           placeholder="Edit your message..."
         />
-
         <div className="mt-5 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-base-content hover:bg-base-200 transition"
+            className="btn btn-ghost btn-sm"
           >
             Cancel
           </button>
           <button
             onClick={() => onSave(newText)}
             disabled={newText.trim() === ""}
-            className={`px-4 py-2 text-sm rounded-md transition font-medium ${
-              newText.trim() === ""
-                ? "bg-primary/50 text-white cursor-not-allowed"
-                : "bg-primary hover:bg-primary-focus text-primary-content"
-            }`}
+            className="btn btn-primary btn-sm"
           >
             Save
           </button>
@@ -81,18 +75,14 @@ const ChatContainer = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (isCheckingAuth) {
-      checkAuth();
-    }
+    if (isCheckingAuth) checkAuth();
   }, [isCheckingAuth, checkAuth]);
 
   useEffect(() => {
     if (!selectedUser?._id || !socket) return;
-
     getMessages(selectedUser._id);
     subscribeToMessages();
     subscribeToTypingEvents();
-
     return () => {
       unsubscribeFromMessages();
       unsubscribeFromTypingEvents();
@@ -100,7 +90,7 @@ const ChatContainer = () => {
   }, [selectedUser?._id, socket]);
 
   useEffect(() => {
-    if (messageEndRef.current && messages.length) {
+    if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
@@ -108,13 +98,9 @@ const ChatContainer = () => {
   if (isCheckingAuth) return <div>Loading chat...</div>;
   if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
-  const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
-  };
+  const isOwnMessage = (senderId) =>
+    (typeof senderId === "string" && senderId === authUser._id) ||
+    (senderId?._id === authUser._id);
 
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
@@ -134,7 +120,7 @@ const ChatContainer = () => {
   };
 
   const filteredMessages = messages.filter((msg) =>
-    msg.content?.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
+    msg.content?.text?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -147,7 +133,7 @@ const ChatContainer = () => {
           placeholder="Search messages..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-base-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full input input-bordered input-sm"
         />
       </div>
 
@@ -156,18 +142,22 @@ const ChatContainer = () => {
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(searchTerm ? filteredMessages : messages).map((message) => {
+            const own = isOwnMessage(message.senderId);
             const hasContent =
-              message.content?.text || message.content?.image || message.content?.file || message.content?.audio;
+              message.content?.text ||
+              message.content?.image ||
+              message.content?.file ||
+              message.content?.audio;
+
             if (!hasContent) return null;
 
-            const own = isOwnMessage(message.senderId);
             const likes = Array.isArray(message.likes) ? message.likes : [];
             const likedByCurrentUser = likes.includes(authUser._id);
 
             return (
               <div
                 key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
+                className={`chat ${own ? "chat-end" : "chat-start"} group`}
               >
                 <div className="chat-image avatar">
                   <div className="w-10 rounded-full border">
@@ -182,48 +172,46 @@ const ChatContainer = () => {
                   </div>
                 </div>
 
-                <div className="chat-header mb-1 text-xs opacity-60">
-                  <time>{formatMessageTime(message.createdAt)}</time>
+                <div className="chat-header text-xs mb-1 opacity-70">
+                  {formatMessageTime(message.createdAt)}
                 </div>
 
-                <div
-                  className={`chat-bubble ${
-                    own ? "bg-primary text-primary-content" : "bg-base-200 text-base-content"
-                  } flex flex-col max-w-[75%]`}
-                >
+                <div className="chat-bubble relative space-y-2">
+                  {/* TEXT */}
                   {message.content?.text && (
                     <>
                       <p>
                         {message.content.text}
                         {message.edited && (
-                          <span className="text-xs ml-2 opacity-70">(edited)</span>
+                          <span className="text-xs ml-2">(edited)</span>
                         )}
                       </p>
                       {likedByCurrentUser && (
                         <button
-                          aria-label="Unlike message"
                           onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
+                          className="text-red-500 text-sm"
                         >
-                          ❤️
+                          ❤
                         </button>
                       )}
                     </>
                   )}
 
+                  {/* IMAGE */}
                   {message.content?.image && (
                     <img
                       src={message.content.image}
-                      alt="Attached"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
+                      alt="Sent"
+                      className="max-w-xs rounded-lg border object-cover"
                     />
                   )}
 
+                  {/* FILE */}
                   {message.content?.file && (
                     <a
                       href={message.content.file}
                       download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
+                      className="block underline text-blue-600"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -231,11 +219,13 @@ const ChatContainer = () => {
                     </a>
                   )}
 
+                  {/* AUDIO */}
                   {message.content?.audio && (
-                    <audio controls src={message.content.audio} className="mt-2 max-w-xs" />
+                    <audio controls src={message.content.audio} className="max-w-xs" />
                   )}
 
-                  <div className="hidden group-hover:block absolute top-1 right-1">
+                  {/* MENU */}
+                  <div className="hidden group-hover:block absolute top-0 right-0">
                     <MessageOptionsMenu
                       isOwnMessage={own}
                       message={message}
@@ -249,7 +239,7 @@ const ChatContainer = () => {
           })}
 
           {searchTerm && filteredMessages.length === 0 && (
-            <p className="text-center text-base-content/60 py-8">No messages found.</p>
+            <p className="text-center text-zinc-500 py-8">No messages found.</p>
           )}
 
           <div ref={messageEndRef} />
