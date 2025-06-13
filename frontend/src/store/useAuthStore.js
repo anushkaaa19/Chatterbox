@@ -8,12 +8,12 @@ import { auth, provider, signInWithPopup, signOut } from "../firebase.jsx";
 const API_URL =
   process.env.NODE_ENV === "development"
     ? "http://localhost:5001/api"
-    : "/api";
+    : "https://chatterbox-backend-rus5.onrender.com/api";
 
 const SOCKET_URL =
   process.env.NODE_ENV === "development"
     ? "http://localhost:5001"
-    : undefined;
+    : "https://chatterbox-backend-rus5.onrender.com/api";
 
 export const useAuthStore = create(
   persist(
