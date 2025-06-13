@@ -178,7 +178,7 @@ const MessageInput = () => {
       }
     
       try {
-        await sendMessage(selectedUser._id, formData);
+        await sendMessage(formData);
         setText("");
         setFilePreview(null);
         setFileData(null);

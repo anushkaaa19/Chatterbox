@@ -98,13 +98,12 @@ export const useChatStore = create((set, get) => ({
         const blob = await res.blob();
         return new File([blob], filename, { type: mimeType });
       };
-  
-      if (messageData.image) {
+      if (messageData.image?.startsWith("data:image")) {
         const imageFile = await dataURLtoFile(messageData.image, "image.png", "image/png");
         formData.append("image", imageFile);
       }
-  
-      if (messageData.audio) {
+      
+      if (messageData.audio?.startsWith("data:audio")) {
         const audioFile = await dataURLtoFile(messageData.audio, "audio.webm", "audio/webm");
         formData.append("audio", audioFile);
       }
