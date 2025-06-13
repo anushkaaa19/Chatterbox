@@ -28,8 +28,12 @@ app.use(fileUpload({
     tempFileDir: "/tmp/",
   }));
 
-app.use('/api/groups', groupRoutes);
-
+  try {
+    app.use('/api/groups', groupRoutes);
+  } catch (err) {
+    console.error("Group route error:", err);
+  }
+  
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
