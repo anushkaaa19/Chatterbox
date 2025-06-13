@@ -1,275 +1,215 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { MessageOptionsMenu } from "./MessageOptionsMenu";
-import ChatHeader from "./ChatHeader";
-import MessageInput from "./MessageInput";
-import MessageSkeleton from "./skeletons/MessageSkeleton";
-import { formatMessageTime } from "../lib/utils";
+import { useGroupStore } from "../store/useGroupStore";
 
-// Modal for editing message
-const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
-  const [newText, setNewText] = useState(oldText);
+import SidebarSkeleton from "./skeletons/SidebarSkeleton";
+import { Users, UsersRound, Plus, Search } from "lucide-react";
+import CreateGroupModal from "./CreateGroupModal";
+
+const Sidebar = () => {
+  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
+  const { onlineUsers } = useAuthStore();
+  const {
+    groups,
+    getGroups,
+    selectedGroup,
+    setSelectedGroup,
+    isGroupLoading,
+  } = useGroupStore();
+
+  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showGroups, setShowGroups] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   useEffect(() => {
-    setNewText(oldText);
-  }, [oldText]);
+    getUsers();
+    getGroups();
+  }, [getUsers, getGroups]);
 
-  if (!isOpen) return null;
+  const filteredUsers = users
+    .filter((user) => user.fullName.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter((user) => (showOnlineOnly ? onlineUsers.includes(user._id) : true));
+
+  const filteredGroups = groups.filter((group) =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (isUsersLoading || isGroupLoading) return <SidebarSkeleton />;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
-        <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
+    <aside className="h-full w-20 md:w-48 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200 bg-base-100 text-base-content">
+      {/* 🔼 Header */}
+      <div className="border-b border-base-300 w-full p-3 lg:p-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            {showGroups ? (
+              <UsersRound className="size-6 text-primary" />
+            ) : (
+              <Users className="size-6 text-primary" />
+            )}
+            <span className="font-medium hidden md:block lg:block">
+              {showGroups ? "Groups" : "Contacts"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGroups(!showGroups)}
+              className="text-primary hover:text-primary-focus flex items-center"
+              aria-label={showGroups ? "Show Contacts" : "Show Groups"}
+            >
+              <span className="hidden md:inline text-sm font-medium">
+                {showGroups ? "Contacts" : "Groups"}
+              </span>
+              <span className="md:hidden">
+                {showGroups ? <Users className="size-5" /> : <UsersRound className="size-5" />}
+              </span>
+            </button>
 
-        <textarea
-          value={newText}
-          onChange={(e) => setNewText(e.target.value)}
-          className="w-full p-3 text-sm border border-zinc-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={4}
-          placeholder="Edit your message..."
-        />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSave(newText)}
-            disabled={newText.trim() === ""}
-            className={`px-4 py-2 text-sm rounded-md transition font-medium ${
-              newText.trim() === ""
-                ? "bg-blue-300 text-white cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
-          >
-            Save
-          </button>
+            <button
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className="md:hidden text-primary"
+            >
+              <Search className="size-5" />
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-};
 
-const ChatContainer = () => {
-  const {
-    messages,
-    getMessages,
-    isMessagesLoading,
-    selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    subscribeToTypingEvents,
-    unsubscribeFromTypingEvents,
-    typingUsers,
-  } = useChatStore();
+        {/* 🔍 Search Inputs */}
+        {showMobileSearch && (
+          <div className="mt-3 md:hidden">
+            <input
+              type="text"
+              placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input input-bordered w-full"
+            />
+          </div>
+        )}
+        <div className="mt-3 hidden md:block">
+          <input
+            type="text"
+            placeholder={`Search ${showGroups ? "groups" : "contacts"}...`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input input-bordered w-full"
+          />
+        </div>
 
-  const {
-    authUser,
-    isCheckingAuth,
-    socket,
-    setAuthUser,
-    setIsCheckingAuth,
-    checkAuth,
-  } = useAuthStore();
+        {/* ✅ Online Filter */}
+        {!showGroups && (
+          <div className="mt-3 hidden lg:flex items-center gap-2">
+            <label className="cursor-pointer flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showOnlineOnly}
+                onChange={(e) => setShowOnlineOnly(e.target.checked)}
+                className="checkbox checkbox-sm checkbox-primary"
+              />
+              <span className="text-sm">Show online only</span>
+            </label>
+            <span className="text-xs opacity-60">
+              ({Math.max(0, onlineUsers.length - 1)} online)
+            </span>
+          </div>
+        )}
 
-  const messageEndRef = useRef(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState(null);
-  const [editingOldText, setEditingOldText] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search bar state
-
-  useEffect(() => {
-    if (isCheckingAuth) {
-      checkAuth();
-    }
-  }, [isCheckingAuth, checkAuth]);
-
-  useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
-
-    getMessages(selectedUser._id);
-    subscribeToMessages();
-    subscribeToTypingEvents();
-
-    return () => {
-      unsubscribeFromMessages();
-      unsubscribeFromTypingEvents();
-    };
-  }, [selectedUser?._id, socket]);
-
-  useEffect(() => {
-    if (messageEndRef.current && messages.length) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-  if (isCheckingAuth) return <div>Loading chat...</div>;
-  if (!authUser?._id) return <div>Please log in to use the chat.</div>;
-
-  const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
-  };
-
-  const handleEdit = (id, oldText) => {
-    setEditingMessageId(id);
-    setEditingOldText(oldText);
-    setIsEditing(true);
-  };
-
-  const handleSaveEdit = (newText) => {
-    if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
-    }
-    setIsEditing(false);
-  };
-
-  const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
-  };
-
-  const filteredMessages = messages.filter((msg) =>
-    msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  );
-
-  return (
-    <div className="flex-1 flex flex-col overflow-auto">
-      <ChatHeader />
-
-      {/* ✅ Search Bar */}
-      <div className="px-4 pt-4">
-        <input
-          type="text"
-          placeholder="Search messages..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        {/* ➕ Create Group */}
+        {showGroups && (
+          <div className="mt-3 hidden md:block">
+            <button
+              onClick={() => setShowCreateGroupModal(true)}
+              className="btn btn-primary w-full"
+            >
+              <Plus className="size-4" />
+              <span className="hidden lg:block">Create Group</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {isMessagesLoading ? (
-        <MessageSkeleton />
-      ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {(searchTerm ? filteredMessages : messages).map((message) => {
-            const own = isOwnMessage(message.senderId);
-            const likes = Array.isArray(message.likes) ? message.likes : [];
-            const likedByCurrentUser = likes.includes(authUser._id);
-
-            return (
-              <div
-                key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
-              >
-                <div className="chat-image avatar">
-                  <div className="size-10 rounded-full border">
-                    <img
-                      src={
-                        own
-                          ? authUser.profilePic || "/avatar.png"
-                          : selectedUser?.profilePic || "/avatar.png"
-                      }
-                      alt="Profile pic"
-                    />
-                  </div>
-                </div>
-
-                <div className="chat-header mb-1">
-                  <time className="text-xs opacity-50 ml-1">
-                    {formatMessageTime(message.createdAt)}
-                  </time>
-                </div>
-
-                <div className="chat-bubble flex flex-col relative">
-                  {message.text && (
-                    <>
-                      <p>
-                        {message.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
-
-                      {likedByCurrentUser && (
-                        <button
-                          aria-label="Unlike message"
-                          onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
-                        >
-                          ❤️
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="Attached"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-                  {message.file && (
-                    <a
-                      href={message.file}
-                      download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
-                  {message.audio && (
-                    <audio controls src={message.audio} className="mt-2 max-w-xs" />
-                  )}
-
-                  <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      message={message}
-                      onEdit={() => handleEdit(message._id, message.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
-                  </div>
-                </div>
-                
-                {/* Show sender name on small screens */}
-                {!own && (
-                  <div className="md:hidden absolute bottom-0 left-16 text-xs text-zinc-500 mt-1">
-                    {selectedUser?.fullName}
-                  </div>
+      {/* 👥 List Section */}
+      <div className="overflow-y-auto w-full py-2">
+        {!showGroups &&
+          filteredUsers.map((user) => (
+            <button
+              key={user._id}
+              onClick={() => {
+                setSelectedUser(user);
+                setSelectedGroup(null);
+              }}
+              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
+                selectedUser?._id === user._id ? "bg-base-200" : "hover:bg-base-200"
+              }`}
+            >
+              <div className="relative">
+                <img
+                  src={user.profilePic || "/avatar.png"}
+                  alt={user.fullName}
+                  className="size-12 object-cover rounded-full border border-base-300 shadow"
+                />
+                {onlineUsers.includes(user._id) && (
+                  <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-base-100" />
                 )}
               </div>
-            );
-          })}
+              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
+                <div className="font-medium truncate">{user.fullName}</div>
+                <div className="text-xs opacity-60">
+                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                </div>
+              </div>
+            </button>
+          ))}
 
-          {searchTerm && filteredMessages.length === 0 && (
-            <p className="text-center text-zinc-500 py-8">No messages found.</p>
-          )}
+        {showGroups &&
+          filteredGroups.map((group) => (
+            <button
+              key={group._id}
+              onClick={() => {
+                setSelectedGroup(group);
+                setSelectedUser(null);
+              }}
+              className={`w-full p-3 flex items-center gap-3 transition-colors relative ${
+                selectedGroup?._id === group._id ? "bg-base-200" : "hover:bg-base-200"
+              }`}
+            >
+              <div className="relative">
+                <img
+                  src={group.profilePic || "/avatar.png"}
+                  alt={group.name}
+                  className="size-12 object-cover rounded-full border border-base-300 shadow"
+                />
+              </div>
+              <div className="absolute left-16 ml-2 text-left min-w-0 max-w-[calc(100%-80px)]">
+                <div className="font-medium truncate">{group.name}</div>
+                <div className="text-xs opacity-60">
+                  {group.members.length} members
+                </div>
+              </div>
+            </button>
+          ))}
 
-          <div ref={messageEndRef} />
-        </div>
+        {!showGroups && filteredUsers.length === 0 && (
+          <div className="text-center opacity-50 py-4">No users found</div>
+        )}
+        {showGroups && filteredGroups.length === 0 && (
+          <div className="text-center opacity-50 py-4">No groups found</div>
+        )}
+      </div>
+
+      {showCreateGroupModal && (
+        <CreateGroupModal
+          onClose={() => {
+            getGroups();
+            setShowCreateGroupModal(false);
+          }}
+        />
       )}
-
-      <MessageInput />
-
-      <EditMessageModal
-        isOpen={isEditing}
-        oldText={editingOldText}
-        onClose={() => setIsEditing(false)}
-        onSave={handleSaveEdit}
-      />
-    </div>
+    </aside>
   );
 };
 
-export default ChatContainer;
+export default Sidebar;
