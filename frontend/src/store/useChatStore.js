@@ -133,7 +133,6 @@ export const useChatStore = create((set, get) => ({
       toast.error(err.response?.data?.message || "Failed to edit message");
     }
   },
-
   toggleLike: async (messageId) => {
     const { authUser } = useAuthStore.getState();
     if (!authUser || !authUser._id) return;
