@@ -7,7 +7,7 @@ import { auth, provider, signInWithPopup, signOut } from "../firebase.jsx";
 
 const API_URL ="https://chatterbox-backend-rus5.onrender.com/api";
 
-const SOCKET_URL ="https://chatterbox-backend-rus5.onrender.com/api";
+const SOCKET_URL ="https://chatterbox-backend-rus5.onrender.com";
 
 export const useAuthStore = create(
   persist(
