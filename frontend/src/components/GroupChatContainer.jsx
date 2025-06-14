@@ -4,8 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import GroupMessageInput from "./GroupMessageInput";
 import GroupChatHeader from "./GroupChatHeader";
 
-// ...imports unchanged
-
+// Audio Player Component
 const AudioPlayer = ({ src, fileName }) => {
   const audioRef = useRef(null);
   const [error, setError] = useState(false);
@@ -18,7 +17,6 @@ const AudioPlayer = ({ src, fileName }) => {
   };
 
   const handleLoad = () => {
-    console.log("Audio loaded successfully:", src);
     setLoading(false);
     setError(false);
   };
@@ -51,8 +49,8 @@ const AudioPlayer = ({ src, fileName }) => {
           onCanPlay={handleLoad}
           onError={handleError}
         >
-          <source src={src} type="audio/mpeg" />
           <source src={src} type="audio/webm" />
+          <source src={src} type="audio/mpeg" />
           <source src={src} type="audio/ogg" />
           Your browser does not support the audio element.
         </audio>
@@ -78,7 +76,6 @@ const GroupChatContainer = () => {
 
   const socket = useAuthStore((state) => state.socket);
   const currentUser = useAuthStore((state) => state.authUser);
-
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -108,7 +105,6 @@ const GroupChatContainer = () => {
       setLoading(true);
       try {
         const messages = await getGroupMessages(selectedGroup._id);
-        console.log("Fetched group messages:", messages);
         setGroupMessages(Array.isArray(messages) ? messages : []);
       } catch (error) {
         console.error("Failed to fetch group messages:", error);
@@ -117,7 +113,6 @@ const GroupChatContainer = () => {
         setLoading(false);
       }
     };
-
     fetchMessages();
   }, [selectedGroup]);
 
@@ -133,7 +128,6 @@ const GroupChatContainer = () => {
   const handleSendMessage = async (messageData) => {
     if (!selectedGroup?._id) return;
     try {
-      console.log("Sending message:", messageData);
       await sendGroupMessage(selectedGroup._id, messageData);
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -168,6 +162,7 @@ const GroupChatContainer = () => {
     <div className="flex flex-col flex-1 h-full bg-base-100">
       <GroupChatHeader group={selectedGroup} />
 
+      {/* Search */}
       <div className="px-4 py-2 bg-base-200 border-b border-base-300">
         <input
           type="text"
@@ -178,6 +173,7 @@ const GroupChatContainer = () => {
         />
       </div>
 
+      {/* Messages */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto px-4 py-2 space-y-2"
@@ -191,17 +187,8 @@ const GroupChatContainer = () => {
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
-            const audioUrl =
-              msg.content?.audio || msg.audio || msg.audioUrl || msg.content?.audioUrl;
-            const fileName = msg.content?.fileName || "audio_message";
-
-            console.log("Rendering message:", {
-              id: msg._id,
-              text: msg.content?.text,
-              audioUrl,
-              fileName,
-              content: msg.content,
-            });
+            const audioUrl = msg.audioUrl || msg.content?.audio;
+            const fileName = msg.fileName || msg.content?.fileName || "audio_message";
 
             return (
               <div
@@ -209,9 +196,7 @@ const GroupChatContainer = () => {
                 className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2`}
               >
                 <div
-                  className={`flex items-start ${
-                    isOwn ? "flex-row-reverse" : ""
-                  } gap-2 max-w-[85%]`}
+                  className={`flex items-start ${isOwn ? "flex-row-reverse" : ""} gap-2 max-w-[85%]`}
                 >
                   {!isOwn && (
                     <div className="avatar mt-1">
@@ -227,11 +212,7 @@ const GroupChatContainer = () => {
                       </div>
                     </div>
                   )}
-                  <div
-                    className={`flex flex-col ${
-                      isOwn ? "items-end" : "items-start"
-                    }`}
-                  >
+                  <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
                     {!isOwn && (
                       <div className="text-xs text-base-content opacity-60 mb-1">
                         {msg.sender?.fullName}
@@ -249,7 +230,7 @@ const GroupChatContainer = () => {
                         <div className="mt-1">
                           <img
                             src={msg.content.image}
-                            alt="sent"
+                            alt="sent image"
                             className="rounded-md max-w-xs max-h-48 object-contain"
                             onError={(e) => {
                               e.target.onerror = null;
@@ -259,11 +240,7 @@ const GroupChatContainer = () => {
                           />
                         </div>
                       )}
-                      {audioUrl ? (
-                        <AudioPlayer src={audioUrl} fileName={fileName} />
-                      ) : (
-                        <div className="text-warning text-sm mt-1">No audio found</div>
-                      )}
+                      {audioUrl && <AudioPlayer src={audioUrl} fileName={fileName} />}
                     </div>
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
