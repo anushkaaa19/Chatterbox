@@ -143,8 +143,10 @@ const GroupChatContainer = () => {
                           : "bg-base-200 text-base-content"
                       }`}
                     >
+                      {/* Text Message */}
                       {msg.content?.text && <p>{msg.content.text}</p>}
 
+                      {/* Image Preview */}
                       {msg.content?.image && (
                         <img
                           src={msg.content.image}
@@ -157,11 +159,21 @@ const GroupChatContainer = () => {
                         />
                       )}
 
+                      {/* Audio Preview */}
                       {msg.content?.audio && (
-                        <audio controls className="mt-1 w-full max-w-xs">
-                          <source src={msg.content.audio} type="audio/mpeg" />
-                          Your browser does not support the audio element.
-                        </audio>
+                        <div className="mt-1 w-full max-w-xs">
+                          <audio
+                            controls
+                            preload="metadata"
+                            className="w-full"
+                          >
+                            <source
+                              src={msg.content.audio}
+                              type={`audio/${msg.content.audio.split(".").pop() || "mpeg"}`}
+                            />
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
                       )}
                     </div>
 
