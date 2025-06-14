@@ -4,7 +4,8 @@ import { useAuthStore } from "../store/useAuthStore";
 import GroupMessageInput from "./GroupMessageInput";
 import GroupChatHeader from "./GroupChatHeader";
 
-// Dedicated Audio Player Component
+// ...imports unchanged
+
 const AudioPlayer = ({ src, fileName }) => {
   const audioRef = useRef(null);
   const [error, setError] = useState(false);
@@ -17,6 +18,7 @@ const AudioPlayer = ({ src, fileName }) => {
   };
 
   const handleLoad = () => {
+    console.log("Audio loaded successfully:", src);
     setLoading(false);
     setError(false);
   };
@@ -80,21 +82,18 @@ const GroupChatContainer = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Check scroll position
   const checkScrollPosition = () => {
     if (!messagesContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
     setIsAtBottom(scrollHeight - scrollTop - clientHeight < 50);
   };
 
-  // Scroll to bottom if user was already there
   useEffect(() => {
     if (isAtBottom && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [groupMessages, isAtBottom]);
 
-  // Initialize scroll position check
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (container) {
@@ -109,6 +108,7 @@ const GroupChatContainer = () => {
       setLoading(true);
       try {
         const messages = await getGroupMessages(selectedGroup._id);
+        console.log("Fetched group messages:", messages);
         setGroupMessages(Array.isArray(messages) ? messages : []);
       } catch (error) {
         console.error("Failed to fetch group messages:", error);
@@ -133,6 +133,7 @@ const GroupChatContainer = () => {
   const handleSendMessage = async (messageData) => {
     if (!selectedGroup?._id) return;
     try {
+      console.log("Sending message:", messageData);
       await sendGroupMessage(selectedGroup._id, messageData);
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -167,7 +168,6 @@ const GroupChatContainer = () => {
     <div className="flex flex-col flex-1 h-full bg-base-100">
       <GroupChatHeader group={selectedGroup} />
 
-      {/* Search bar */}
       <div className="px-4 py-2 bg-base-200 border-b border-base-300">
         <input
           type="text"
@@ -178,7 +178,6 @@ const GroupChatContainer = () => {
         />
       </div>
 
-      {/* Messages */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto px-4 py-2 space-y-2"
@@ -192,8 +191,17 @@ const GroupChatContainer = () => {
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
-            const audioUrl = msg.content?.audio;
+            const audioUrl =
+              msg.content?.audio || msg.audio || msg.audioUrl || msg.content?.audioUrl;
             const fileName = msg.content?.fileName || "audio_message";
+
+            console.log("Rendering message:", {
+              id: msg._id,
+              text: msg.content?.text,
+              audioUrl,
+              fileName,
+              content: msg.content,
+            });
 
             return (
               <div
@@ -241,7 +249,7 @@ const GroupChatContainer = () => {
                         <div className="mt-1">
                           <img
                             src={msg.content.image}
-                            alt="sent image"
+                            alt="sent"
                             className="rounded-md max-w-xs max-h-48 object-contain"
                             onError={(e) => {
                               e.target.onerror = null;
@@ -251,7 +259,11 @@ const GroupChatContainer = () => {
                           />
                         </div>
                       )}
-                      {audioUrl && <AudioPlayer src={audioUrl} fileName={fileName} />}
+                      {audioUrl ? (
+                        <AudioPlayer src={audioUrl} fileName={fileName} />
+                      ) : (
+                        <div className="text-warning text-sm mt-1">No audio found</div>
+                      )}
                     </div>
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
