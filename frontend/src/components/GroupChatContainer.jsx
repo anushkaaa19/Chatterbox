@@ -42,7 +42,6 @@ const GroupChatContainer = () => {
 
   useEffect(() => {
     if (!selectedGroup?._id) return;
-
     subscribeToGroupMessages(selectedGroup._id);
     return () => unsubscribeFromGroupMessages();
   }, [selectedGroup?._id]);
@@ -108,6 +107,9 @@ const GroupChatContainer = () => {
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
+            const audioUrl = msg.content?.audio;
+            if (audioUrl) console.log("AUDIO URL:", audioUrl);
+
             return (
               <div
                 key={msg._id}
@@ -160,16 +162,17 @@ const GroupChatContainer = () => {
                       )}
 
                       {/* Audio Preview */}
-                      {msg.content?.audio && (
-                        <div className="mt-1 w-full max-w-xs">
+                      {audioUrl && (
+                        <div className="mt-1 w-full max-w-xs bg-base-100 p-2 rounded shadow">
                           <audio
                             controls
                             preload="metadata"
-                            className="w-full"
+                            className="w-full rounded"
+                            style={{ backgroundColor: "#fff" }}
                           >
                             <source
-                              src={msg.content.audio}
-                              type={`audio/${msg.content.audio.split(".").pop() || "mpeg"}`}
+                              src={audioUrl}
+                              type={`audio/${audioUrl.split(".").pop() || "mpeg"}`}
                             />
                             Your browser does not support the audio element.
                           </audio>
