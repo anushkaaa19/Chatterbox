@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import {MessageOptionsMenu} from "./MessageOptionsMenu";
+import { MessageOptionsMenu } from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
@@ -55,6 +55,8 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
+    editMessage,
+    toggleLike,
   } = useChatStore();
 
   const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
@@ -89,9 +91,9 @@ const ChatContainer = () => {
   if (isCheckingAuth) return <div>Loading chat...</div>;
   if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
-  const isOwnMessage = (senderId) =>
-    (typeof senderId === "string" && senderId === authUser._id) ||
-    (senderId?._id === authUser._id);
+  const isOwnMessage = (sender) =>
+    (typeof sender === "string" && sender === authUser._id) ||
+    (sender?._id === authUser._id);
 
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
@@ -101,13 +103,13 @@ const ChatContainer = () => {
 
   const handleSaveEdit = (newText) => {
     if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
+      editMessage(editingMessageId, newText);
     }
     setIsEditing(false);
   };
 
   const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
+    toggleLike(id);
   };
 
   const filteredMessages = messages.filter((msg) =>
@@ -133,7 +135,7 @@ const ChatContainer = () => {
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(searchTerm ? filteredMessages : messages).map((message) => {
-            const own = isOwnMessage(message.senderId);
+            const own = isOwnMessage(message.sender);
             const hasContent =
               message.content?.text ||
               message.content?.image ||
@@ -142,8 +144,8 @@ const ChatContainer = () => {
 
             if (!hasContent) return null;
 
-            const likes = Array.isArray(message.likes) ? message.likes : [];
-            const likedByCurrentUser = likes.includes(authUser._id);
+            const likedBy = Array.isArray(message.likedBy) ? message.likedBy : [];
+            const likedByCurrentUser = likedBy.includes(authUser._id);
 
             return (
               <div
@@ -170,23 +172,12 @@ const ChatContainer = () => {
                 <div className="chat-bubble relative space-y-2">
                   {/* TEXT */}
                   {message.content?.text && (
-                    <>
-                      <p>
-                        {message.content.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
-                      {likedByCurrentUser && (
-                        <button
-                          onClick={() => handleLike(message._id)}
-                          className="text-red-500 text-sm"
-                          aria-label="Unlike message"
-                        >
-                          ❤
-                        </button>
+                    <div>
+                      <p className="whitespace-pre-line">{message.content.text}</p>
+                      {message.edited && (
+                        <span className="text-xs italic ml-1">(edited)</span>
                       )}
-                    </>
+                    </div>
                   )}
 
                   {/* IMAGE */}
@@ -216,18 +207,32 @@ const ChatContainer = () => {
                     <audio controls src={message.content.audio} className="max-w-xs" />
                   )}
 
-                  {/* MENU */}
-                  <div className={`hidden group-hover:block absolute ${own ? 'top-0 left-0' : 'top-0 right-0'} z-10`}>
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      onEdit={() => handleEdit(message._id, message.content?.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
+                  {/* LIKE & MENU */}
+                  <div className="flex items-center justify-between mt-1 text-sm">
+                    <button
+                      onClick={() => handleLike(message._id)}
+                      className="text-xs text-red-500 hover:scale-110 transition"
+                    >
+                      {likedByCurrentUser ? "❤️" : "🤍"} {likedBy.length || 0}
+                    </button>
+
+                    <div
+                      className={`hidden group-hover:block absolute ${
+                        own ? "top-0 left-0" : "top-0 right-0"
+                      } z-10`}
+                    >
+                      <MessageOptionsMenu
+                        isOwnMessage={own}
+                        onEdit={() => handleEdit(message._id, message.content?.text)}
+                        onLike={() => handleLike(message._id)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
+
           {searchTerm && filteredMessages.length === 0 && (
             <p className="text-center text-zinc-500 py-8">No messages found.</p>
           )}

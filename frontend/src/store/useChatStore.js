@@ -112,36 +112,54 @@ export const useChatStore = create((set, get) => ({
     set({ messages: updated });
   },
 // --- useChatStore.js ---
-editMessage: async (id, newText) => {
-  try {
-    const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
-    // Update the specific message in the store
-    set((state) => ({
-      messages: state.messages.map(msg => 
-        msg._id === id ? {...msg, content: {...msg.content, text: newText}, edited: true} : msg
-      )
-    }));
-  } catch (err) {
-    toast.error(err.response?.data?.message || "Failed to edit message");
-  }
-},
 
-toggleLike: async (messageId) => {
-  try {
-    const res = await axiosInstance.post(`/messages/like/${messageId}`);
-    // Update the specific message in the store
-    set((state) => ({
-      messages: state.messages.map(msg => 
-        msg._id === messageId ? {
-          ...msg, 
-          likedBy: res.data.message.likedBy 
-        } : msg
-      )
-    }));
-  } catch (err) {
-    toast.error(err.response?.data?.message || "Failed to toggle like");
-  }
-},
+  // 🟢 Add/Edit this function
+  editMessage: async (messageId, newText) => {
+    try {
+      const { data } = await axiosInstance.put(`/messages/edit/${messageId}`, {
+        newText,
+      });
+      const updatedMsg = data.message;
+
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === messageId
+            ? {
+                ...msg,
+                content: { ...msg.content, text: newText },
+                edited: true,
+              }
+            : msg
+        ),
+      }));
+
+      toast.success("Message edited");
+    } catch (error) {
+      toast.error("Failed to edit message");
+      console.error(error);
+    }
+  },
+
+  // 🟢 Add/Edit this function
+  toggleLike: async (messageId) => {
+    try {
+      const { data } = await axiosInstance.post(`/messages/like/${messageId}`);
+      const updatedMsg = data.message;
+
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === messageId
+            ? { ...msg, likedBy: updatedMsg.likedBy }
+            : msg
+        ),
+      }));
+
+      toast.success("Toggled like");
+    } catch (error) {
+      toast.error("Failed to toggle like");
+      console.error(error);
+    }
+  },
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
