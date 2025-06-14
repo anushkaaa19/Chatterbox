@@ -6,10 +6,9 @@ import express from "express";
 const app = express();
 const server = http.createServer(app);
 
-// Setup Socket.IO with CORS
 const io = new Server(server, {
   cors: {
-    origin: ["https://chatterbox-frontend-uppi.onrender.com"],
+    origin: ["https://chatterbox-frontend-uppi.onrender.com", "http://localhost:3000"],
     credentials: true,
   },
 });
@@ -29,17 +28,35 @@ io.on("connection", (socket) => {
   }
 
   // ==== One-to-One Typing Events ====
-  socket.on("typing", ({ fromUserId, toUserId }) => {
+  socket.on("typing", ({ toUserId }) => {
     const receiverSocketId = userSocketMap[toUserId];
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("typing", { userId: fromUserId });
+      io.to(receiverSocketId).emit("typing", { userId });
     }
   });
 
-  socket.on("stopTyping", ({ fromUserId, toUserId }) => {
+  socket.on("stopTyping", ({ toUserId }) => {
     const receiverSocketId = userSocketMap[toUserId];
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("stopTyping", { userId: fromUserId });
+      io.to(receiverSocketId).emit("stopTyping", { userId });
+    }
+  });
+
+  // ==== One-to-One Message ====
+  socket.on("sendMessage", (message) => {
+    if (!message || !message.receiver) {
+      console.error("Invalid message format", message);
+      return;
+    }
+
+    const receiverId = message.receiver._id || message.receiver;
+    const receiverSocketId = userSocketMap[receiverId];
+    
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", { message });
+      console.log(`📨 Sent message to user ${receiverId}`);
+    } else {
+      console.log(`❌ User ${receiverId} not connected`);
     }
   });
 

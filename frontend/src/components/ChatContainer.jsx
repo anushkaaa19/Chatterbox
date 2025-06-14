@@ -42,6 +42,56 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   );
 };
 
+const MediaRenderer = ({ content }) => {
+  if (!content) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {/* Image */}
+      {content.image && (
+        <div className="relative">
+          <img
+            src={content.image}
+            alt="Sent media"
+            className="max-w-full max-h-64 rounded-lg border object-contain"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.parentNode.innerHTML = '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
+            }}
+          />
+        </div>
+      )}
+
+      {/* Audio */}
+      {content.audio && (
+        <div className="bg-base-300 rounded-lg p-2">
+          <audio controls className="w-full">
+            <source src={content.audio} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      )}
+
+      {/* File */}
+      {content.file && (
+        <a
+          href={content.file}
+          download={content.fileName || "file"}
+          className="flex items-center gap-2 p-2 bg-base-300 rounded-lg hover:bg-base-200 transition"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="text-2xl">📎</span>
+          <span className="truncate flex-1">
+            {content.fileName || "Download file"}
+          </span>
+          <span className="text-xs opacity-75">Click to download</span>
+        </a>
+      )}
+    </div>
+  );
+};
+
 const ChatContainer = () => {
   const {
     messages,
@@ -58,11 +108,37 @@ const ChatContainer = () => {
   const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
 
   const messageEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
+  // Check scroll position
+  const checkScrollPosition = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    setIsAtBottom(scrollHeight - scrollTop - clientHeight < 50);
+  };
+
+  // Scroll to bottom if user was already there
+  useEffect(() => {
+    if (isAtBottom && messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isAtBottom]);
+
+  // Initialize scroll position check
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", checkScrollPosition);
+      return () => container.removeEventListener("scroll", checkScrollPosition);
+    }
+  }, []);
+
+  // Check auth status
   useEffect(() => {
     if (isCheckingAuth) checkAuth();
   }, [isCheckingAuth]);
@@ -83,13 +159,14 @@ const ChatContainer = () => {
     if (!socket || !selectedUser?._id || !authUser?._id) return;
     
     const messageHandler = (data) => {
-      const { message } = data;
+      const message = data.message || data;
       if (!message) return;
       
-      // Check if message belongs to current conversation
+      // Normalize IDs
       const senderId = message.sender?._id || message.sender;
       const receiverId = message.receiver?._id || message.receiver;
       
+      // Check if message belongs to current conversation
       const isRelevantMessage = 
         (senderId === authUser._id && receiverId === selectedUser._id) ||
         (receiverId === authUser._id && senderId === selectedUser._id);
@@ -99,22 +176,21 @@ const ChatContainer = () => {
       }
     };
 
-    // Setup listener
+    // Setup listeners for both formats
     socket.on("newMessage", messageHandler);
+    socket.on("message", messageHandler);
 
-    // Cleanup on unmount or conversation change
+    // Cleanup
     return () => {
       socket.off("newMessage", messageHandler);
+      socket.off("message", messageHandler);
     };
   }, [socket, selectedUser?._id, authUser?._id]);
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const isOwnMessage = (sender) =>
-    sender === authUser._id || sender?._id === authUser._id;
+  const isOwnMessage = (sender) => {
+    const senderId = sender?._id || sender;
+    return senderId === authUser._id;
+  };
 
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
@@ -131,15 +207,19 @@ const ChatContainer = () => {
 
   const handleLike = (id) => toggleLike(id);
 
-  const filteredMessages = messages.filter((msg) =>
-    msg.content?.text?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMessages = messages.filter((msg) => {
+    const content = msg.content || {};
+    return (
+      content.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      content.fileName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   if (isCheckingAuth) return <div className="p-4">Loading chat...</div>;
   if (!authUser?._id) return <div className="p-4">Please log in to use the chat.</div>;
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto bg-base-100">
+    <div className="flex-1 flex flex-col bg-base-100">
       <ChatHeader />
 
       <div className="px-4 pt-4">
@@ -155,23 +235,26 @@ const ChatContainer = () => {
       {isMessagesLoading ? (
         <MessageSkeleton />
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+          onScroll={checkScrollPosition}
+        >
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.sender);
-            const hasContent =
-              message.content?.text ||
-              message.content?.image ||
-              message.content?.file ||
-              message.content?.audio;
+            const content = message.content || {};
+            const hasContent = content.text || content.image || content.file || content.audio;
 
             if (!hasContent) return null;
 
             const likedBy = Array.isArray(message.likedBy) ? message.likedBy : [];
-            const likedByCurrentUser = likedBy.includes(authUser._id);
+            const likedByCurrentUser = likedBy.some(id => 
+              id?.toString() === authUser._id.toString()
+            );
 
             return (
               <div
-                key={message._id}
+                key={message._id || message.id}
                 className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
               >
                 <div className="chat-image avatar">
@@ -183,12 +266,16 @@ const ChatContainer = () => {
                           : selectedUser?.profilePic || "/avatar.png"
                       }
                       alt="User"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/avatar.png";
+                      }}
                     />
                   </div>
                 </div>
 
                 <div className="chat-header text-xs mb-1 opacity-70">
-                  {formatMessageTime(message.createdAt)}
+                  {formatMessageTime(message.createdAt || message.timestamp)}
                   {message.edited && (
                     <span className="text-xs italic ml-1">(edited)</span>
                   )}
@@ -201,69 +288,34 @@ const ChatContainer = () => {
                       : "bg-base-200 text-base-content"
                   }`}
                 >
-                  {/* 3-dot menu */}
-                  <div className="absolute top-1 right-1 z-10 hidden group-hover:block">
-                    <div className="bg-base-200 rounded-md shadow-lg">
-                      <MessageOptionsMenu
-                        isOwnMessage={own}
-                        onEdit={() => handleEdit(message._id, message.content?.text)}
-                        onLike={() => handleLike(message._id)}
-                      />
-                    </div>
+                  {/* Message options */}
+                  <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <MessageOptionsMenu
+                      isOwnMessage={own}
+                      onEdit={() => handleEdit(message._id, content.text)}
+                      onLike={() => handleLike(message._id)}
+                    />
                   </div>
 
-                  {/* Text */}
-                  {message.content?.text && (
-                    <p className="whitespace-pre-line">{message.content.text}</p>
+                  {/* Text content */}
+                  {content.text && (
+                    <p className="whitespace-pre-line">{content.text}</p>
                   )}
 
-                  {/* Image */}
-                  {message.content?.image && (
-                    <div className="mt-2">
-                      <img
-                        src={message.content.image}
-                        alt="sent"
-                        className="max-w-full max-h-64 rounded-lg border object-contain"
-                      />
-                    </div>
-                  )}
-
-                  {/* File */}
-                  {message.content?.file && (
-                    <a
-                      href={message.content.file}
-                      download={message.fileName || "file"}
-                      className="block underline text-blue-400 mt-1"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
-
-                  {/* Audio */}
-                  {message.content?.audio && (
-                    <div className="mt-2">
-                      <audio
-                        controls
-                        className="w-full"
-                      >
-                        <source src={message.content.audio} type="audio/mpeg" />
-                        Your browser does not support the audio element.
-                      </audio>
-                    </div>
-                  )}
+                  {/* Media content */}
+                  <MediaRenderer content={content} />
 
                   {/* Likes */}
                   {likedBy.length > 0 && (
                     <div className="flex justify-end mt-1">
                       <button
                         onClick={() => handleLike(message._id)}
-                        className={`flex items-center gap-1 transition-transform hover:scale-110 ${
+                        className={`flex items-center gap-1 ${
                           likedByCurrentUser ? "text-red-500" : "text-gray-500"
                         }`}
                       >
-                        <span className="text-xs">❤️ {likedBy.length}</span>
+                        <span>❤️</span>
+                        <span className="text-xs">{likedBy.length}</span>
                       </button>
                     </div>
                   )}
