@@ -4,8 +4,66 @@ import { useAuthStore } from "../store/useAuthStore";
 import GroupMessageInput from "./GroupMessageInput";
 import GroupChatHeader from "./GroupChatHeader";
 
+// Dedicated Audio Player Component
+const AudioPlayer = ({ src, fileName }) => {
+  const audioRef = useRef(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const handleError = () => {
+    console.error("Audio failed to load:", src);
+    setError(true);
+    setLoading(false);
+  };
+
+  const handleLoad = () => {
+    setLoading(false);
+    setError(false);
+  };
+
+  return (
+    <div className="mt-2 w-full max-w-xs bg-base-100 rounded-lg p-2 shadow">
+      {loading && !error && (
+        <div className="flex items-center justify-center py-2">
+          <span className="loading loading-spinner loading-sm mr-2" />
+          <span className="text-sm">Loading audio...</span>
+        </div>
+      )}
+      
+      {error ? (
+        <div className="text-error p-2 text-center">
+          <p>Audio failed to load</p>
+          <a 
+            href={src} 
+            className="link link-primary text-sm"
+            download={fileName || "audio_message"}
+          >
+            Download instead
+          </a>
+        </div>
+      ) : (
+        <audio
+          ref={audioRef}
+          controls
+          className={`w-full ${loading ? 'hidden' : 'block'}`}
+          onLoadedMetadata={handleLoad}
+          onCanPlay={handleLoad}
+          onError={handleError}
+        >
+          <source src={src} type="audio/mpeg" />
+          <source src={src} type="audio/webm" />
+          <source src={src} type="audio/ogg" />
+          Your browser does not support the audio element.
+        </audio>
+      )}
+    </div>
+  );
+};
+
 const GroupChatContainer = () => {
   const bottomRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   const {
     selectedGroup,
@@ -22,6 +80,29 @@ const GroupChatContainer = () => {
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Check scroll position
+  const checkScrollPosition = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    setIsAtBottom(scrollHeight - scrollTop - clientHeight < 50);
+  };
+
+  // Scroll to bottom if user was already there
+  useEffect(() => {
+    if (isAtBottom && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [groupMessages, isAtBottom]);
+
+  // Initialize scroll position check
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", checkScrollPosition);
+      return () => container.removeEventListener("scroll", checkScrollPosition);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -48,10 +129,6 @@ const GroupChatContainer = () => {
     return () => unsubscribeFromGroupMessages();
   }, [selectedGroup?._id]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [groupMessages]);
-
   const isOwnMessage = (senderId) =>
     senderId?.toString() === currentUser?._id?.toString();
 
@@ -68,7 +145,7 @@ const GroupChatContainer = () => {
     const content = msg.content || {};
     return (
       content.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      content.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
+      (content.fileName?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   });
 
@@ -104,7 +181,11 @@ const GroupChatContainer = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-2 space-y-2"
+        onScroll={checkScrollPosition}
+      >
         {loading ? (
           <div className="text-center text-base-content opacity-50">
             <span className="loading loading-spinner loading-md" />
@@ -114,6 +195,7 @@ const GroupChatContainer = () => {
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
             const audioUrl = msg.content?.audio;
+            const fileName = msg.content?.fileName || "audio_message";
 
             return (
               <div
@@ -157,42 +239,21 @@ const GroupChatContainer = () => {
                       {msg.content?.text && <p>{msg.content.text}</p>}
 
                       {msg.content?.image && (
-                        <img
-                          src={msg.content.image}
-                          alt="sent image"
-                          className="mt-1 rounded-md max-w-xs max-h-48 object-contain"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.parentNode.innerHTML = '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
-                          }}
-                        />
+                        <div className="mt-1">
+                          <img
+                            src={msg.content.image}
+                            alt="sent image"
+                            className="rounded-md max-w-xs max-h-48 object-contain"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.parentNode.innerHTML = '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
+                            }}
+                          />
+                        </div>
                       )}
 
                       {audioUrl && (
-                        <div className="mt-2 w-full max-w-xs bg-base-100 rounded-lg p-2 shadow">
-                          <audio
-                            controls
-                            className="w-full"
-                            onError={(e) => {
-                              console.error("Audio error:", e.target.error);
-                              e.target.parentNode.innerHTML = `
-                                <div class="text-error p-2 text-center">
-                                  <p>Audio failed to load</p>
-                                  <a href="${audioUrl}" 
-                                     class="link link-primary text-sm"
-                                     download="audio_message">
-                                    Download instead
-                                  </a>
-                                </div>
-                              `;
-                            }}
-                          >
-                            <source src={audioUrl} type="audio/mpeg" />
-                            <source src={audioUrl} type="audio/webm" />
-                            <source src={audioUrl} type="audio/ogg" />
-                            Your browser does not support the audio element.
-                          </audio>
-                        </div>
+                        <AudioPlayer src={audioUrl} fileName={fileName} />
                       )}
                     </div>
 
