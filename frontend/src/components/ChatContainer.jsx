@@ -4,79 +4,33 @@ import { useAuthStore } from "../store/useAuthStore";
 import { MessageOptionsMenu } from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
-import MessageSkeleton from "./skeletons/MessageSkeleton";
-import { formatMessageTime } from "../lib/utils";
-
-const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
-  const [newText, setNewText] = useState(oldText);
-
-  useEffect(() => {
-    setNewText(oldText);
-  }, [oldText]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
-      <div className="bg-base-100 p-6 rounded-xl shadow-lg w-full max-w-md">
-        <h3 className="text-lg font-bold mb-2">Edit Message</h3>
-        <textarea
-          className="textarea textarea-bordered w-full h-24"
-          value={newText}
-          onChange={(e) => setNewText(e.target.value)}
-        />
-        <div className="flex justify-end mt-4 gap-2">
-          <button className="btn btn-sm btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={() => onSave(newText)}
-            disabled={!newText.trim()}
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import MessageSkeleton from "./MessageSkeleton";
+import EditMessageModal from "./EditMessageModal";
 
 const ChatContainer = () => {
   const {
     messages,
-    getMessages,
-    isMessagesLoading,
     selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    subscribeToTypingEvents,
-    unsubscribeFromTypingEvents,
+    isMessagesLoading,
+    fetchMessages,
     editMessage,
     toggleLike,
   } = useChatStore();
 
-  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
-  const messageEndRef = useRef(null);
+  const { authUser, isCheckingAuth } = useAuthStore();
+
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    if (isCheckingAuth) checkAuth();
-  }, [isCheckingAuth]);
+  const messageEndRef = useRef(null);
 
   useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
-    getMessages(selectedUser._id);
-    subscribeToMessages();
-    subscribeToTypingEvents();
-    return () => {
-      unsubscribeFromMessages();
-      unsubscribeFromTypingEvents();
-    };
-  }, [selectedUser?._id, socket]);
+    if (selectedUser?._id) {
+      fetchMessages(selectedUser._id);
+    }
+  }, [selectedUser]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -100,6 +54,11 @@ const ChatContainer = () => {
 
   const handleLike = (id) => {
     toggleLike(id);
+  };
+
+  const formatMessageTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const filteredMessages = messages.filter((msg) =>
@@ -171,9 +130,9 @@ const ChatContainer = () => {
                       : "bg-base-200 text-base-content"
                   }`}
                 >
-                  {/* 3-dot menu positioned inside bubble top-right */}
-                  <div className="absolute top-1 right-1 z-10 hidden group-hover:block">
-                    <div className="bg-base-200 rounded-md shadow-lg">
+                  {/* 3-dot menu */}
+                  <div className="absolute top-1 right-1 z-10">
+                    <div className="invisible group-hover:visible">
                       <MessageOptionsMenu
                         isOwnMessage={own}
                         onEdit={() => handleEdit(message._id, message.content?.text)}
@@ -182,7 +141,7 @@ const ChatContainer = () => {
                     </div>
                   </div>
 
-                  {/* Text content */}
+                  {/* Text */}
                   {message.content?.text && (
                     <div>
                       <p className="whitespace-pre-line">{message.content.text}</p>
