@@ -7,6 +7,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
+// Edit Message Modal
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -59,8 +60,8 @@ const ChatContainer = () => {
   } = useChatStore();
 
   const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
-  const messageEndRef = useRef(null);
 
+  const messageEndRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
@@ -107,7 +108,9 @@ const ChatContainer = () => {
     setIsEditing(false);
   };
 
-  const handleLike = (id) => toggleLike(id);
+  const handleLike = (id) => {
+    toggleLike(id);
+  };
 
   const filteredMessages = messages.filter((msg) =>
     msg.content?.text?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -147,7 +150,7 @@ const ChatContainer = () => {
             return (
               <div
                 key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group`}
+                className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
               >
                 <div className="chat-image avatar">
                   <div className="w-10 rounded-full border">
@@ -166,17 +169,14 @@ const ChatContainer = () => {
                   {formatMessageTime(message.createdAt)}
                 </div>
 
-                <div className="chat-bubble relative space-y-2">
-                  {likedBy.length > 0 && (
-                    <div
-                      className={`absolute ${
-                        own ? "top-1 left-2" : "top-1 right-2"
-                      } text-xs text-red-500 z-10`}
-                    >
-                      ❤️ {likedBy.length}
-                    </div>
-                  )}
-
+                <div
+                  className={`chat-bubble max-w-xs break-words space-y-2 p-3 ${
+                    own
+                      ? "bg-primary text-primary-content"
+                      : "bg-base-200 text-base-content"
+                  }`}
+                >
+                  {/* TEXT */}
                   {message.content?.text && (
                     <div>
                       <p className="whitespace-pre-line">{message.content.text}</p>
@@ -186,19 +186,21 @@ const ChatContainer = () => {
                     </div>
                   )}
 
+                  {/* IMAGE */}
                   {message.content?.image && (
                     <img
                       src={message.content.image}
                       alt="Sent"
-                      className="max-w-xs rounded-lg border object-cover"
+                      className="max-w-full rounded-lg border object-cover"
                     />
                   )}
 
+                  {/* FILE */}
                   {message.content?.file && (
                     <a
                       href={message.content.file}
                       download={message.fileName || "file"}
-                      className="block underline text-blue-600"
+                      className="block underline text-blue-400"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -206,20 +208,37 @@ const ChatContainer = () => {
                     </a>
                   )}
 
+                  {/* AUDIO */}
                   {message.content?.audio && (
-                    <audio controls src={message.content.audio} className="max-w-xs" />
+                    <audio controls src={message.content.audio} className="w-full" />
                   )}
 
-                  <div
-                    className={`hidden group-hover:block absolute ${
-                      own ? "top-0 left-0" : "top-0 right-0"
-                    } z-10`}
-                  >
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      onEdit={() => handleEdit(message._id, message.content?.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
+                  {/* LIKE + MENU */}
+                  <div className="flex justify-between items-center text-xs mt-2">
+                    {/* Like (only if liked) */}
+                    {likedBy.length > 0 && (
+                      <button
+                        onClick={() => handleLike(message._id)}
+                        className={`transition-transform hover:scale-110 ${
+                          likedByCurrentUser ? "text-red-500" : "text-gray-500"
+                        }`}
+                      >
+                        ❤️ {likedBy.length}
+                      </button>
+                    )}
+
+                    {/* 3-Dot Menu (hover) */}
+                    <div
+                      className={`absolute top-0 z-10 ${
+                        own ? "left-[-1.5rem]" : "right-[-1.5rem]"
+                      } hidden group-hover:block`}
+                    >
+                      <MessageOptionsMenu
+                        isOwnMessage={own}
+                        onEdit={() => handleEdit(message._id, message.content?.text)}
+                        onLike={() => handleLike(message._id)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
