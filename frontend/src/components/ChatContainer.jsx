@@ -5,6 +5,8 @@ import { MessageOptionsMenu } from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import { formatMessageTime } from "../lib/utils";
+
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -39,30 +41,42 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
     </div>
   );
 };
+
 const ChatContainer = () => {
   const {
     messages,
-    selectedUser,
+    getMessages,
     isMessagesLoading,
-    fetchMessages,
+    selectedUser,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+    subscribeToTypingEvents,
+    unsubscribeFromTypingEvents,
     editMessage,
     toggleLike,
   } = useChatStore();
 
-  const { authUser, isCheckingAuth } = useAuthStore();
-
+  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
+  const messageEndRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const messageEndRef = useRef(null);
+  useEffect(() => {
+    if (isCheckingAuth) checkAuth();
+  }, [isCheckingAuth]);
 
   useEffect(() => {
-    if (selectedUser?._id) {
-      fetchMessages(selectedUser._id);
-    }
-  }, [selectedUser]);
+    if (!selectedUser?._id || !socket) return;
+    getMessages(selectedUser._id);
+    subscribeToMessages();
+    subscribeToTypingEvents();
+    return () => {
+      unsubscribeFromMessages();
+      unsubscribeFromTypingEvents();
+    };
+  }, [selectedUser?._id, socket]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,11 +100,6 @@ const ChatContainer = () => {
 
   const handleLike = (id) => {
     toggleLike(id);
-  };
-
-  const formatMessageTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const filteredMessages = messages.filter((msg) =>
@@ -162,9 +171,9 @@ const ChatContainer = () => {
                       : "bg-base-200 text-base-content"
                   }`}
                 >
-                  {/* 3-dot menu */}
-                  <div className="absolute top-1 right-1 z-10">
-                    <div className="invisible group-hover:visible">
+                  {/* 3-dot menu positioned inside bubble top-right */}
+                  <div className="absolute top-1 right-1 z-10 hidden group-hover:block">
+                    <div className="bg-base-200 rounded-md shadow-lg">
                       <MessageOptionsMenu
                         isOwnMessage={own}
                         onEdit={() => handleEdit(message._id, message.content?.text)}
@@ -173,7 +182,7 @@ const ChatContainer = () => {
                     </div>
                   </div>
 
-                  {/* Text */}
+                  {/* Text content */}
                   {message.content?.text && (
                     <div>
                       <p className="whitespace-pre-line">{message.content.text}</p>
@@ -248,4 +257,4 @@ const ChatContainer = () => {
   );
 };
 
-export default ChatContainer;
+export default ChatContainer;  
