@@ -3,11 +3,10 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { MessageOptionsMenu } from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
-import MessageInput from "./MessageInput";
+import MessageInput from "MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing message
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -60,8 +59,8 @@ const ChatContainer = () => {
   } = useChatStore();
 
   const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
-
   const messageEndRef = useRef(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
@@ -108,9 +107,7 @@ const ChatContainer = () => {
     setIsEditing(false);
   };
 
-  const handleLike = (id) => {
-    toggleLike(id);
-  };
+  const handleLike = (id) => toggleLike(id);
 
   const filteredMessages = messages.filter((msg) =>
     msg.content?.text?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -170,7 +167,16 @@ const ChatContainer = () => {
                 </div>
 
                 <div className="chat-bubble relative space-y-2">
-                  {/* TEXT */}
+                  {likedBy.length > 0 && (
+                    <div
+                      className={`absolute ${
+                        own ? "top-1 left-2" : "top-1 right-2"
+                      } text-xs text-red-500 z-10`}
+                    >
+                      ❤️ {likedBy.length}
+                    </div>
+                  )}
+
                   {message.content?.text && (
                     <div>
                       <p className="whitespace-pre-line">{message.content.text}</p>
@@ -180,7 +186,6 @@ const ChatContainer = () => {
                     </div>
                   )}
 
-                  {/* IMAGE */}
                   {message.content?.image && (
                     <img
                       src={message.content.image}
@@ -189,7 +194,6 @@ const ChatContainer = () => {
                     />
                   )}
 
-                  {/* FILE */}
                   {message.content?.file && (
                     <a
                       href={message.content.file}
@@ -202,31 +206,20 @@ const ChatContainer = () => {
                     </a>
                   )}
 
-                  {/* AUDIO */}
                   {message.content?.audio && (
                     <audio controls src={message.content.audio} className="max-w-xs" />
                   )}
 
-                  {/* LIKE & MENU */}
-                  <div className="flex items-center justify-between mt-1 text-sm">
-                    <button
-                      onClick={() => handleLike(message._id)}
-                      className="text-xs text-red-500 hover:scale-110 transition"
-                    >
-                      {likedByCurrentUser ? "❤️" : "🤍"} {likedBy.length || 0}
-                    </button>
-
-                    <div
-                      className={`hidden group-hover:block absolute ${
-                        own ? "top-0 left-0" : "top-0 right-0"
-                      } z-10`}
-                    >
-                      <MessageOptionsMenu
-                        isOwnMessage={own}
-                        onEdit={() => handleEdit(message._id, message.content?.text)}
-                        onLike={() => handleLike(message._id)}
-                      />
-                    </div>
+                  <div
+                    className={`hidden group-hover:block absolute ${
+                      own ? "top-0 left-0" : "top-0 right-0"
+                    } z-10`}
+                  >
+                    <MessageOptionsMenu
+                      isOwnMessage={own}
+                      onEdit={() => handleEdit(message._id, message.content?.text)}
+                      onLike={() => handleLike(message._id)}
+                    />
                   </div>
                 </div>
               </div>
@@ -252,4 +245,5 @@ const ChatContainer = () => {
     </div>
   );
 };
+
 export default ChatContainer;
