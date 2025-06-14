@@ -48,8 +48,7 @@ const ChatContainer = () => {
     getMessages,
     isMessagesLoading,
     selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
+    addMessage,
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
     editMessage,
@@ -68,18 +67,48 @@ const ChatContainer = () => {
     if (isCheckingAuth) checkAuth();
   }, [isCheckingAuth]);
 
+  // Fetch messages when user changes
   useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
+    if (!selectedUser?._id) return;
     getMessages(selectedUser._id);
-    subscribeToMessages();
     subscribeToTypingEvents();
 
     return () => {
-      unsubscribeFromMessages();
       unsubscribeFromTypingEvents();
     };
-  }, [selectedUser?._id, socket]);
+  }, [selectedUser?._id]);
 
+  // Setup socket listener for real-time messages
+  useEffect(() => {
+    if (!socket || !selectedUser?._id || !authUser?._id) return;
+    
+    const messageHandler = (data) => {
+      const { message } = data;
+      if (!message) return;
+      
+      // Check if message belongs to current conversation
+      const senderId = message.sender?._id || message.sender;
+      const receiverId = message.receiver?._id || message.receiver;
+      
+      const isRelevantMessage = 
+        (senderId === authUser._id && receiverId === selectedUser._id) ||
+        (receiverId === authUser._id && senderId === selectedUser._id);
+      
+      if (isRelevantMessage) {
+        addMessage(message);
+      }
+    };
+
+    // Setup listener
+    socket.on("newMessage", messageHandler);
+
+    // Cleanup on unmount or conversation change
+    return () => {
+      socket.off("newMessage", messageHandler);
+    };
+  }, [socket, selectedUser?._id, authUser?._id]);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -160,6 +189,9 @@ const ChatContainer = () => {
 
                 <div className="chat-header text-xs mb-1 opacity-70">
                   {formatMessageTime(message.createdAt)}
+                  {message.edited && (
+                    <span className="text-xs italic ml-1">(edited)</span>
+                  )}
                 </div>
 
                 <div
@@ -182,21 +214,18 @@ const ChatContainer = () => {
 
                   {/* Text */}
                   {message.content?.text && (
-                    <div>
-                      <p className="whitespace-pre-line">{message.content.text}</p>
-                      {message.edited && (
-                        <span className="text-xs italic ml-1">(edited)</span>
-                      )}
-                    </div>
+                    <p className="whitespace-pre-line">{message.content.text}</p>
                   )}
 
                   {/* Image */}
                   {message.content?.image && (
-                    <img
-                      src={message.content.image}
-                      alt="sent"
-                      className="max-w-full rounded border mt-1"
-                    />
+                    <div className="mt-2">
+                      <img
+                        src={message.content.image}
+                        alt="sent"
+                        className="max-w-full max-h-64 rounded-lg border object-contain"
+                      />
+                    </div>
                   )}
 
                   {/* File */}
@@ -214,26 +243,30 @@ const ChatContainer = () => {
 
                   {/* Audio */}
                   {message.content?.audio && (
-                    <audio
-                      controls
-                      src={message.content.audio}
-                      className="w-full mt-2"
-                    />
+                    <div className="mt-2">
+                      <audio
+                        controls
+                        className="w-full"
+                      >
+                        <source src={message.content.audio} type="audio/mpeg" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
                   )}
 
                   {/* Likes */}
-                  <div className="flex justify-between items-center text-xs mt-2">
-                    {likedBy.length > 0 && (
+                  {likedBy.length > 0 && (
+                    <div className="flex justify-end mt-1">
                       <button
                         onClick={() => handleLike(message._id)}
-                        className={`transition-transform hover:scale-110 ${
+                        className={`flex items-center gap-1 transition-transform hover:scale-110 ${
                           likedByCurrentUser ? "text-red-500" : "text-gray-500"
                         }`}
                       >
-                        ❤️ {likedBy.length}
+                        <span className="text-xs">❤️ {likedBy.length}</span>
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

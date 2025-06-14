@@ -25,7 +25,23 @@ export const useChatStore = create((set, get) => ({
         : [...state.typingUsers, userId],
     }));
   },
+// Add this function
+addMessage: (message) => {
+  set((state) => {
+    const exists = state.messages.some((m) => m._id === message._id);
+    return exists ? state : { messages: [...state.messages, message] };
+  });
+},
 
+// ... other functions ...
+
+// Remove subscribeToMessages and unsubscribeFromMessages
+setSelectedUser: (user) => {
+  set({ selectedUser: user, messages: [] });
+  if (user?._id) {
+    get().getMessages(user._id);
+  }
+},
   removeTypingUser: (userId) => {
     set((state) => ({
       typingUsers: state.typingUsers.filter((id) => id !== userId),
