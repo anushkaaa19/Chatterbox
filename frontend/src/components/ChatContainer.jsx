@@ -4,9 +4,41 @@ import { useAuthStore } from "../store/useAuthStore";
 import { MessageOptionsMenu } from "./MessageOptionsMenu";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
-import MessageSkeleton from "./MessageSkeleton";
-import EditMessageModal from "./EditMessageModal";
+import MessageSkeleton from "./skeletons/MessageSkeleton";
+const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
+  const [newText, setNewText] = useState(oldText);
 
+  useEffect(() => {
+    setNewText(oldText);
+  }, [oldText]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
+      <div className="bg-base-100 p-6 rounded-xl shadow-lg w-full max-w-md">
+        <h3 className="text-lg font-bold mb-2">Edit Message</h3>
+        <textarea
+          className="textarea textarea-bordered w-full h-24"
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+        />
+        <div className="flex justify-end mt-4 gap-2">
+          <button className="btn btn-sm btn-ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => onSave(newText)}
+            disabled={!newText.trim()}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 const ChatContainer = () => {
   const {
     messages,
