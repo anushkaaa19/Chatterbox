@@ -44,16 +44,12 @@ io.on("connection", (socket) => {
   });
 
   // ==== One-to-One Message ====
-  socket.on("newMessage", ({ message, receiverId }) => {
+  socket.on("forwardMessage", ({ message, receiverId }) => {
     const receiverSocketId = userSocketMap[receiverId];
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", { message });
-      console.log(`📨 Sent message to user ${receiverId}`);
-    } else {
-      console.log(`❌ User ${receiverId} not connected`);
     }
   });
-
   // ===== Group Chat Events =====
   socket.on("joinGroup", (groupId) => {
     socket.join(groupId);

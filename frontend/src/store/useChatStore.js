@@ -4,10 +4,13 @@ import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
+
+// Remember to call initialize() when setting up the store
 // Global direct message socket handler
 let dmMessageHandler = null;
 
 export const useChatStore = create((set, get) => ({
+  
   users: [],
   messages: [],
   selectedUser: null,
@@ -100,12 +103,13 @@ export const useChatStore = create((set, get) => ({
       set({ messages: [...messages, newMsg] });
   
       // ✅ EMIT SOCKET EVENT HERE
-      if (socket) {
-        socket.emit("newMessage", {
-          message: newMsg,
-          receiverId: selectedUser._id,
-        });
-      }
+      // Inside sendMessage function:
+if (socket) {
+  socket.emit("forwardMessage", {
+    message: newMsg,
+    receiverId: selectedUser._id,
+  });
+}
   
       return newMsg;
     } catch (err) {
@@ -123,18 +127,39 @@ export const useChatStore = create((set, get) => ({
     set({ messages: updated });
   },
 // --- useChatStore.js ---
+// ... existing code ...
+
 setSocketListeners: () => {
   const { socket } = get();
   if (!socket) return;
 
-  socket.on("newMessage", ({ message }) => {
-    if (message) {
-      set((state) => ({
-        messages: [...state.messages, message],
-      }));
+  // Remove existing listener to avoid duplicates
+  socket.off("newMessage");
+
+  socket.on("newMessage", (data) => {
+    const { message } = data;
+    const { selectedUser, user } = get();
+    
+    if (!message || !selectedUser) return;
+    
+    const senderId = message.sender?._id || message.sender;
+    const receiverId = message.receiver?._id || message.receiver;
+    
+    // Check if message belongs to current conversation
+    const isRelevantMessage = 
+      (senderId === user._id && receiverId === selectedUser._id) ||
+      (receiverId === user._id && senderId === selectedUser._id);
+    
+    if (isRelevantMessage) {
+      set((state) => {
+        const exists = state.messages.some(m => m._id === message._id);
+        return exists ? state : { messages: [...state.messages, message] };
+      });
     }
   });
 },
+
+// ... existing code ...
 
   // 🟢 Add/Edit this function
   editMessage: async (messageId, newText) => {

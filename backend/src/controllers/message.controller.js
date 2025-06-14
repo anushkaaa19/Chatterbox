@@ -53,12 +53,12 @@ export const sendMessages = async (req, res) => {
 
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+      io.to(receiverSocketId).emit("newMessage",  { message: newMessage });
     }
     
     const senderSocketId = getReceiverSocketId(senderId);
     if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", newMessage);
+      io.to(senderSocketId).emit("newMessage",  { message: newMessage });
     }
     
 
