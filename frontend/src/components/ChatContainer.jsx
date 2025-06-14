@@ -7,7 +7,6 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing messages
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -166,22 +165,24 @@ const ChatContainer = () => {
                 </div>
 
                 <div
-                  className={`chat-bubble max-w-xs break-words p-3 ${
+                  className={`chat-bubble max-w-xs break-words p-3 relative ${
                     own
                       ? "bg-primary text-primary-content"
                       : "bg-base-200 text-base-content"
-                  } relative`}
+                  }`}
                 >
-                  {/* Menu at top-right inside the bubble */}
-                  <div className="absolute top-1 right-1 hidden group-hover:block z-10">
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      onEdit={() => handleEdit(message._id, message.content?.text)}
-                      onLike={() => handleLike(message._id)}
-                    />
+                  {/* 3-dot menu positioned inside bubble top-right */}
+                  <div className="absolute top-1 right-1 z-10 hidden group-hover:block">
+                    <div className="bg-base-200 rounded-md shadow-lg">
+                      <MessageOptionsMenu
+                        isOwnMessage={own}
+                        onEdit={() => handleEdit(message._id, message.content?.text)}
+                        onLike={() => handleLike(message._id)}
+                      />
+                    </div>
                   </div>
 
-                  {/* Message content */}
+                  {/* Text content */}
                   {message.content?.text && (
                     <div>
                       <p className="whitespace-pre-line">{message.content.text}</p>
@@ -191,6 +192,7 @@ const ChatContainer = () => {
                     </div>
                   )}
 
+                  {/* Image */}
                   {message.content?.image && (
                     <img
                       src={message.content.image}
@@ -199,6 +201,7 @@ const ChatContainer = () => {
                     />
                   )}
 
+                  {/* File */}
                   {message.content?.file && (
                     <a
                       href={message.content.file}
@@ -211,10 +214,12 @@ const ChatContainer = () => {
                     </a>
                   )}
 
+                  {/* Audio */}
                   {message.content?.audio && (
                     <audio controls src={message.content.audio} className="w-full mt-2" />
                   )}
 
+                  {/* Likes */}
                   <div className="flex justify-between items-center text-xs mt-2">
                     {likedBy.length > 0 && (
                       <button
