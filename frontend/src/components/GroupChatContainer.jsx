@@ -20,7 +20,7 @@ const GroupChatContainer = () => {
   const socket = useAuthStore((state) => state.socket);
   const currentUser = useAuthStore((state) => state.authUser);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(""); // 🔍 Add search query state
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -51,9 +51,8 @@ const GroupChatContainer = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [groupMessages]);
 
-  const isOwnMessage = (senderId) => {
-    return senderId?.toString() === currentUser?._id?.toString();
-  };
+  const isOwnMessage = (senderId) =>
+    senderId?.toString() === currentUser?._id?.toString();
 
   const handleSendMessage = async (messageData) => {
     if (!selectedGroup?._id) return;
@@ -88,7 +87,7 @@ const GroupChatContainer = () => {
     <div className="flex flex-col flex-1 h-full bg-base-100">
       <GroupChatHeader group={selectedGroup} />
 
-      {/* 🔍 Search Bar */}
+      {/* Search bar */}
       <div className="px-4 py-2 bg-base-200 border-b border-base-300">
         <input
           type="text"
@@ -129,33 +128,43 @@ const GroupChatContainer = () => {
                       </div>
                     </div>
                   )}
+
                   <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
                     {!isOwn && (
                       <div className="text-xs text-base-content opacity-60 mb-1">
                         {msg.sender?.fullName}
                       </div>
                     )}
+
                     <div
-                      className={`px-3 py-2 rounded-lg ${
+                      className={`px-3 py-2 rounded-lg whitespace-pre-line ${
                         isOwn
                           ? "bg-primary text-primary-content"
                           : "bg-base-200 text-base-content"
                       }`}
                     >
                       {msg.content?.text && <p>{msg.content.text}</p>}
+
                       {msg.content?.image && (
                         <img
                           src={msg.content.image}
-                          alt="sent"
+                          alt="sent image"
                           className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/image-placeholder.png";
+                          }}
                         />
                       )}
+
                       {msg.content?.audio && (
                         <audio controls className="mt-1 w-full max-w-xs">
-                          <source src={msg.content.audio} />
+                          <source src={msg.content.audio} type="audio/mpeg" />
+                          Your browser does not support the audio element.
                         </audio>
                       )}
                     </div>
+
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -172,6 +181,7 @@ const GroupChatContainer = () => {
             No messages found.
           </p>
         )}
+
         <div ref={bottomRef} />
       </div>
 
