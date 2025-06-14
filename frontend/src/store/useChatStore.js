@@ -80,13 +80,13 @@ export const useChatStore = create((set, get) => ({
   },
 
   sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
+    const { selectedUser, messages, socket } = get();
     if (!selectedUser?._id) {
       const err = new Error("No recipient selected");
       toast.error(err.message);
       throw err;
     }
-
+  
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
@@ -96,15 +96,26 @@ export const useChatStore = create((set, get) => ({
       if (!newMsg || !newMsg._id) {
         throw new Error("Invalid message returned from server");
       }
+  
       set({ messages: [...messages, newMsg] });
+  
+      // ✅ EMIT SOCKET EVENT HERE
+      if (socket) {
+        socket.emit("newMessage", {
+          message: newMsg,
+          receiverId: selectedUser._id,
+        });
+      }
+  
       return newMsg;
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to send message";
+      const msg =
+        err.response?.data?.message || err.message || "Failed to send message";
       toast.error(msg);
       throw err;
     }
   },
-
+  
   updateMessage: (updatedMessage) => {
     const updated = get().messages.map((msg) =>
       msg._id === updatedMessage._id ? updatedMessage : msg
@@ -112,6 +123,18 @@ export const useChatStore = create((set, get) => ({
     set({ messages: updated });
   },
 // --- useChatStore.js ---
+setSocketListeners: () => {
+  const { socket } = get();
+  if (!socket) return;
+
+  socket.on("newMessage", ({ message }) => {
+    if (message) {
+      set((state) => ({
+        messages: [...state.messages, message],
+      }));
+    }
+  });
+},
 
   // 🟢 Add/Edit this function
   editMessage: async (messageId, newText) => {
