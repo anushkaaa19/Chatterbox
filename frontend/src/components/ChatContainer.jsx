@@ -172,6 +172,15 @@ const ChatContainer = () => {
                       : "bg-base-200 text-base-content"
                   } relative`}
                 >
+                  {/* Menu at top-right inside the bubble */}
+                  <div className="absolute top-1 right-1 hidden group-hover:block z-10">
+                    <MessageOptionsMenu
+                      isOwnMessage={own}
+                      onEdit={() => handleEdit(message._id, message.content?.text)}
+                      onLike={() => handleLike(message._id)}
+                    />
+                  </div>
+
                   {/* Message content */}
                   {message.content?.text && (
                     <div>
@@ -217,21 +226,6 @@ const ChatContainer = () => {
                         ❤️ {likedBy.length}
                       </button>
                     )}
-                  </div>
-
-                  {/* 3 dots menu - visible on hover only */}
-                  <div
-                    className={`absolute top-1 ${
-                      own ? "left-[-1.8rem]" : "right-[-1.8rem]"
-                    } hidden group-hover:block`}
-                  >
-                    <MessageOptionsMenu
-                      isOwnMessage={own}
-                      onEdit={() =>
-                        handleEdit(message._id, message.content?.text)
-                      }
-                      onLike={() => handleLike(message._id)}
-                    />
                   </div>
                 </div>
               </div>
