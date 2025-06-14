@@ -64,9 +64,13 @@ const GroupChatContainer = () => {
     }
   };
 
-  const filteredMessages = groupMessages.filter((msg) =>
-    msg.content?.text?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredMessages = groupMessages.filter((msg) => {
+    const content = msg.content || {};
+    return (
+      content.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      content.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   if (!selectedGroup) {
     return (
@@ -127,6 +131,10 @@ const GroupChatContainer = () => {
                         <img
                           src={msg.sender?.profilePic || "/avatar.png"}
                           alt="avatar"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/avatar.png";
+                          }}
                         />
                       </div>
                     </div>
@@ -152,26 +160,36 @@ const GroupChatContainer = () => {
                         <img
                           src={msg.content.image}
                           alt="sent image"
-                          className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
+                          className="mt-1 rounded-md max-w-xs max-h-48 object-contain"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = "/image-placeholder.png";
+                            e.target.parentNode.innerHTML = '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
                           }}
                         />
                       )}
 
                       {audioUrl && (
-                        <div className="mt-2 w-full max-w-xs bg-base-100 rounded p-1 shadow">
+                        <div className="mt-2 w-full max-w-xs bg-base-100 rounded-lg p-2 shadow">
                           <audio
                             controls
-                            preload="metadata"
                             className="w-full"
-                            onCanPlay={() => console.log("Audio loaded:", audioUrl)}
                             onError={(e) => {
-                              console.error("Audio failed to load:", audioUrl);
+                              console.error("Audio error:", e.target.error);
+                              e.target.parentNode.innerHTML = `
+                                <div class="text-error p-2 text-center">
+                                  <p>Audio failed to load</p>
+                                  <a href="${audioUrl}" 
+                                     class="link link-primary text-sm"
+                                     download="audio_message">
+                                    Download instead
+                                  </a>
+                                </div>
+                              `;
                             }}
                           >
+                            <source src={audioUrl} type="audio/mpeg" />
                             <source src={audioUrl} type="audio/webm" />
+                            <source src={audioUrl} type="audio/ogg" />
                             Your browser does not support the audio element.
                           </audio>
                         </div>
