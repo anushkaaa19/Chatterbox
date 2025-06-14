@@ -3,8 +3,6 @@ import { useGroupStore } from "../store/useGroupStore";
 import { useAuthStore } from "../store/useAuthStore";
 import GroupMessageInput from "./GroupMessageInput";
 import GroupChatHeader from "./GroupChatHeader";
-import { FiEdit3 } from "react-icons/fi";
-import { AiOutlineHeart, AiFillHeart } from "react-icons/ai";
 
 const GroupChatContainer = () => {
   const bottomRef = useRef(null);
@@ -17,8 +15,6 @@ const GroupChatContainer = () => {
     subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
     sendGroupMessage,
-    likeGroupMessage,
-    editGroupMessage,
   } = useGroupStore();
 
   const socket = useAuthStore((state) => state.socket);
@@ -26,8 +22,6 @@ const GroupChatContainer = () => {
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingMsgId, setEditingMsgId] = useState(null);
-  const [editedText, setEditedText] = useState("");
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -67,24 +61,6 @@ const GroupChatContainer = () => {
       await sendGroupMessage(selectedGroup._id, messageData);
     } catch (error) {
       console.error("Failed to send message:", error);
-    }
-  };
-
-  const handleLike = async (messageId) => {
-    try {
-      await likeGroupMessage(messageId);
-    } catch (err) {
-      console.error("Like error:", err);
-    }
-  };
-
-  const handleEdit = async (msgId) => {
-    try {
-      await editGroupMessage(msgId, editedText);
-      setEditingMsgId(null);
-      setEditedText("");
-    } catch (err) {
-      console.error("Edit error:", err);
     }
   };
 
@@ -133,7 +109,6 @@ const GroupChatContainer = () => {
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
-            const hasLiked = msg.likes?.includes(currentUser._id);
             const audioUrl = msg.content?.audio;
 
             return (
@@ -165,81 +140,42 @@ const GroupChatContainer = () => {
                     )}
 
                     <div
-                      className={`px-3 py-2 rounded-lg whitespace-pre-line group relative ${
+                      className={`px-3 py-2 rounded-lg whitespace-pre-line ${
                         isOwn
                           ? "bg-primary text-primary-content"
                           : "bg-base-200 text-base-content"
                       }`}
                     >
-                      {editingMsgId === msg._id ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            value={editedText}
-                            onChange={(e) => setEditedText(e.target.value)}
-                            className="input input-sm w-full"
-                          />
-                          <button
-                            onClick={() => handleEdit(msg._id)}
-                            className="btn btn-xs btn-success"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          {msg.content?.text && <p>{msg.content.text}</p>}
+                      {msg.content?.text && <p>{msg.content.text}</p>}
 
-                          {msg.content?.image && (
-                            <img
-                              src={msg.content.image}
-                              alt="sent image"
-                              className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "/image-placeholder.png";
-                              }}
-                            />
-                          )}
-
-                          {audioUrl && (
-                            <div className="mt-2 w-full max-w-xs bg-base-100 rounded p-1 shadow">
-                              <audio
-                                controls
-                                preload="metadata"
-                                className="w-full"
-                                onCanPlay={() => console.log("Audio loaded:", audioUrl)}
-                                onError={(e) => {
-                                  console.error("Audio failed to load:", audioUrl);
-                                  console.error("Error details:", e);
-                                }}
-                              >
-                                <source src={audioUrl} type="audio/webm" />
-                                Your browser does not support the audio element.
-                              </audio>
-                            </div>
-                          )}
-                        </>
+                      {msg.content?.image && (
+                        <img
+                          src={msg.content.image}
+                          alt="sent image"
+                          className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/image-placeholder.png";
+                          }}
+                        />
                       )}
 
-                      <div className="absolute right-1 top-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                        {isOwn && (
-                          <button
-                            className="btn btn-xs btn-circle btn-ghost"
-                            onClick={() => {
-                              setEditingMsgId(msg._id);
-                              setEditedText(msg.content.text);
+                      {audioUrl && (
+                        <div className="mt-2 w-full max-w-xs bg-base-100 rounded p-1 shadow">
+                          <audio
+                            controls
+                            preload="metadata"
+                            className="w-full"
+                            onCanPlay={() => console.log("Audio loaded:", audioUrl)}
+                            onError={(e) => {
+                              console.error("Audio failed to load:", audioUrl);
                             }}
                           >
-                            <FiEdit3 />
-                          </button>
-                        )}
-                        <button
-                          className="btn btn-xs btn-circle btn-ghost"
-                          onClick={() => handleLike(msg._id)}
-                        >
-                          {hasLiked ? <AiFillHeart className="text-error" /> : <AiOutlineHeart />}
-                        </button>
-                      </div>
+                            <source src={audioUrl} type="audio/webm" />
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
@@ -247,9 +183,6 @@ const GroupChatContainer = () => {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
-                      {msg.likes?.length > 0 && (
-                        <span className="ml-2 text-error">❤️ {msg.likes.length}</span>
-                      )}
                     </div>
                   </div>
                 </div>
