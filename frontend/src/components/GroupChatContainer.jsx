@@ -240,7 +240,13 @@ const GroupChatContainer = () => {
                           />
                         </div>
                       )}
-                      {audioUrl && <AudioPlayer src={audioUrl} fileName={fileName} />}
+                      {(msg.audioUrl || msg.content?.audio) && (
+  <AudioPlayer
+    src={msg.audioUrl || msg.content?.audio}
+    fileName={msg.fileName || msg.content?.fileName || "audio_message"}
+  />
+)}
+
                     </div>
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
