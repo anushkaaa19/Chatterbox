@@ -170,23 +170,25 @@ export const useChatStore = create((set, get) => ({
     if (dmMessageHandler) {
       socket.off("newMessage", dmMessageHandler);
     }
-
-    // New handler
     dmMessageHandler = (newMessage) => {
       const { user } = useAuthStore.getState();
       const { selectedUser } = get();
     
+      const senderId = newMessage.sender?._id || newMessage.sender;
+      const receiverId = newMessage.receiver?._id || newMessage.receiver;
+    
       const isBetweenSelectedUser =
-        (newMessage.sender === user._id && newMessage.receiver === selectedUser._id) ||
-        (newMessage.receiver === user._id && newMessage.sender === selectedUser._id);
+        (senderId === user._id && receiverId === selectedUser._id) ||
+        (receiverId === user._id && senderId === selectedUser._id);
     
       if (!isBetweenSelectedUser) return;
     
       set((state) => {
-        const exists = state.messages.some(m => m._id === newMessage._id);
+        const exists = state.messages.some((m) => m._id === newMessage._id);
         return exists ? state : { messages: [...state.messages, newMessage] };
       });
     };
+    
     
 
     socket.on("newMessage", dmMessageHandler);
