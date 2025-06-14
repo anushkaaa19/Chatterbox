@@ -54,7 +54,6 @@ const ChatContainer = () => {
     unsubscribeFromTypingEvents,
     editMessage,
     toggleLike,
-    set,
   } = useChatStore();
 
   const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
@@ -65,12 +64,10 @@ const ChatContainer = () => {
   const [editingOldText, setEditingOldText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 👉 Check login first
   useEffect(() => {
     if (isCheckingAuth) checkAuth();
   }, [isCheckingAuth]);
 
-  // 👉 Load messages and subscribe on user change
   useEffect(() => {
     if (!selectedUser?._id || !socket) return;
     getMessages(selectedUser._id);
@@ -83,26 +80,9 @@ const ChatContainer = () => {
     };
   }, [selectedUser?._id, socket]);
 
-  // 👉 Auto-scroll on new messages
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // ✅ Real-time incoming messages listener
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleNewMessage = ({ message }) => {
-      if (!message) return;
-
-      set((state) => ({
-        messages: [...state.messages, message],
-      }));
-    };
-
-    socket.on("newMessage", handleNewMessage);
-    return () => socket.off("newMessage", handleNewMessage);
-  }, [socket]);
 
   const isOwnMessage = (sender) =>
     sender === authUser._id || sender?._id === authUser._id;
@@ -200,7 +180,7 @@ const ChatContainer = () => {
                     </div>
                   </div>
 
-                  {/* Text content */}
+                  {/* Text */}
                   {message.content?.text && (
                     <div>
                       <p className="whitespace-pre-line">{message.content.text}</p>
@@ -210,7 +190,7 @@ const ChatContainer = () => {
                     </div>
                   )}
 
-                  {/* ✅ Image preview */}
+                  {/* Image */}
                   {message.content?.image && (
                     <img
                       src={message.content.image}
@@ -219,7 +199,7 @@ const ChatContainer = () => {
                     />
                   )}
 
-                  {/* ✅ File */}
+                  {/* File */}
                   {message.content?.file && (
                     <a
                       href={message.content.file}
@@ -232,9 +212,13 @@ const ChatContainer = () => {
                     </a>
                   )}
 
-                  {/* ✅ Audio */}
+                  {/* Audio */}
                   {message.content?.audio && (
-                    <audio controls src={message.content.audio} className="w-full mt-2" />
+                    <audio
+                      controls
+                      src={message.content.audio}
+                      className="w-full mt-2"
+                    />
                   )}
 
                   {/* Likes */}

@@ -6,6 +6,7 @@ import express from "express";
 const app = express();
 const server = http.createServer(app);
 
+// Setup Socket.IO with CORS
 const io = new Server(server, {
   cors: {
     origin: ["https://chatterbox-frontend-uppi.onrender.com"],
@@ -13,6 +14,7 @@ const io = new Server(server, {
   },
 });
 
+// Maintain map of userId -> socket.id
 const userSocketMap = {};
 export const getReceiverSocketId = (userId) => userSocketMap[userId] || null;
 
@@ -26,7 +28,7 @@ io.on("connection", (socket) => {
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   }
 
-  // One-to-one typing
+  // ==== One-to-One Typing Events ====
   socket.on("typing", ({ fromUserId, toUserId }) => {
     const receiverSocketId = userSocketMap[toUserId];
     if (receiverSocketId) {
@@ -41,6 +43,17 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ==== One-to-One Message ====
+  socket.on("newMessage", ({ message, receiverId }) => {
+    const receiverSocketId = userSocketMap[receiverId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", { message });
+      console.log(`📨 Sent message to user ${receiverId}`);
+    } else {
+      console.log(`❌ User ${receiverId} not connected`);
+    }
+  });
+
   // ===== Group Chat Events =====
   socket.on("joinGroup", (groupId) => {
     socket.join(groupId);
@@ -52,12 +65,11 @@ io.on("connection", (socket) => {
     console.log(`🚪 ${socket.userId} left group ${groupId}`);
   });
 
-  // When message is saved in DB, emit separately
   socket.on("sendGroupMessage", ({ groupId, message }) => {
-    // Broadcast to everyone in the group INCLUDING the sender
     io.to(groupId).emit("receiveGroupMessage", { groupId, message });
   });
-  
+
+  // Handle disconnection
   socket.on("disconnect", () => {
     if (socket.userId) {
       delete userSocketMap[socket.userId];

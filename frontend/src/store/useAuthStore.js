@@ -147,7 +147,6 @@ export const useAuthStore = create(
       login: async (data) => {
         set({ isLoggingIn: true });
         try {
-          const res = await axiosInstance.post("/auth/login", data);
           await axiosInstance.post("/auth/login", data);
 
 // wait for cookie to actually get set
