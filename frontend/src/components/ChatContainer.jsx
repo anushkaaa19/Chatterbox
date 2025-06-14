@@ -175,9 +175,7 @@ const ChatContainer = () => {
                   {/* Message content */}
                   {message.content?.text && (
                     <div>
-                      <p className="whitespace-pre-line">
-                        {message.content.text}
-                      </p>
+                      <p className="whitespace-pre-line">{message.content.text}</p>
                       {message.edited && (
                         <span className="text-xs italic ml-1">(edited)</span>
                       )}
@@ -196,7 +194,7 @@ const ChatContainer = () => {
                     <a
                       href={message.content.file}
                       download={message.fileName || "file"}
-                      className="block underline text-blue-400"
+                      className="block underline text-blue-400 mt-1"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -225,7 +223,7 @@ const ChatContainer = () => {
                   <div
                     className={`absolute top-1 ${
                       own ? "left-[-1.8rem]" : "right-[-1.8rem]"
-                    } bg-base-100 rounded shadow hidden group-hover:block z-20`}
+                    } hidden group-hover:block`}
                   >
                     <MessageOptionsMenu
                       isOwnMessage={own}
