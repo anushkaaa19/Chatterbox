@@ -139,38 +139,45 @@ const GroupChatContainer = () => {
                       </div>
                     )}
                     <div
-                      className={`px-3 py-2 rounded-lg max-w-xs break-words ${
-                        isOwn
-                          ? "bg-primary text-primary-content"
-                          : "bg-base-200 text-base-content"
-                      }`}
-                    >
-                      {msg.content?.text && <p>{msg.content.text}</p>}
+  className={`px-3 py-2 rounded-lg max-w-xs break-words ${
+    isOwn
+      ? "bg-primary text-primary-content"
+      : "bg-base-200 text-base-content"
+  }`}
+>
+  {/* Render text if available */}
+  {msg.content?.text && msg.content.text.trim() !== "" && (
+    <p>{msg.content.text}</p>
+  )}
 
-                      {msg.content?.image && (
-                        <img
-                          src={msg.content.image}
-                          alt="sent"
-                          className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
-                        />
-                      )}
+  {/* Render image if available */}
+  {msg.content?.image && msg.content.image.trim() !== "" && (
+    <img
+      src={msg.content.image}
+      alt="sent"
+      className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
+    />
+  )}
 
-                      {msg.content?.audio && (
-                        <audio controls className="mt-1 w-full max-w-xs">
-                          <source
-                            src={msg.content.audio}
-                            type={`audio/${msg.content.audio.split(".").pop() || "webm"}`}
-                          />
-                          Your browser does not support the audio element.
-                        </audio>
-                      )}
+  {/* Render audio if available */}
+  {msg.content?.audio && msg.content.audio.trim() !== "" && (
+    <audio controls className="mt-1 w-full max-w-xs">
+      <source
+        src={msg.content.audio}
+        type={`audio/${msg.content.audio.split(".").pop() || "webm"}`}
+      />
+      Your browser does not support the audio element.
+    </audio>
+  )}
 
-                      {!msg.content?.text &&
-                        !msg.content?.image &&
-                        !msg.content?.audio && (
-                          <p className="italic opacity-50">Empty message</p>
-                        )}
-                    </div>
+  {/* Fallback: If no valid content */}
+  {!msg.content?.text?.trim() &&
+    !msg.content?.image?.trim() &&
+    !msg.content?.audio?.trim() && (
+      <p className="italic opacity-50">Empty message</p>
+    )}
+</div>
+
 
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
