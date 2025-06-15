@@ -154,20 +154,22 @@ const GroupChatContainer = () => {
                         />
                       )}
                       {msg.content?.audio && (
-                        <div className="mt-1 w-full max-w-xs">
-                          <audio
-                            controls
-                            preload="auto"
-                            className="w-full"
-                            onError={(e) =>
-                              console.error("Audio error on message", msg._id, e)
-                            }
-                          >
-                            <source src={msg.content.audio} type="audio/webm" />
-                            Your browser does not support the audio element.
-                          </audio>
-                        </div>
-                      )}
+  <div className="mt-1 w-full max-w-xs">
+    <audio
+      controls
+      preload="metadata"
+      className="block w-full"
+      onError={(e) =>
+        console.error("Audio error on message", msg._id, e)
+      }
+    >
+      <source src={msg.content.audio} type="audio/webm" />
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+)}
+
+                      
                     </div>
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
