@@ -14,23 +14,57 @@ export const useChatStore = create((set, get) => ({
   typingUsers: [],
 
   // === Subscriptions ===
-  subscribeToMessages: (userId) => {
-    const socket = useAuthStore.getState().socket;
-    if (!socket) return;
+ // Update the subscribeToMessages function
+subscribeToMessages: (userId) => {
+  const socket = useAuthStore.getState().socket;
+  if (!socket) return;
 
-    if (dmMessageHandler) {
-      socket.off("receiveMessage", dmMessageHandler);
+  // Clean up any existing listener
+  if (dmMessageHandler) {
+    socket.off("newMessage", dmMessageHandler);
+  }
+
+  dmMessageHandler = (data) => {
+    const message = data.message;
+    const senderId = message.sender?._id || message.sender;
+    
+    // Only add if from current chat or to current chat
+    if (senderId === userId || message.receiver === userId) {
+      get().addMessage(message);
     }
+  };
 
-    dmMessageHandler = ({ senderId, message }) => {
-      // Only add if from current chat
-      if (senderId === userId) {
-        get().addMessage(message);
-      }
-    };
+  socket.on("newMessage", dmMessageHandler);
+},
 
-    socket.on("receiveMessage", dmMessageHandler);
-  },
+// Update the sendMessage function
+sendMessage: async (messageData) => {
+  const { selectedUser, messages, socket } = get();
+  if (!selectedUser?._id) {
+    const err = new Error("No recipient selected");
+    toast.error(err.message);
+    throw err;
+  }
+
+  try {
+    const res = await axiosInstance.post(`/messages/${selectedUser._id}`, messageData);
+    const newMsg = res.data?.message;
+    
+    // Optimistically add message
+    set({ messages: [...messages, newMsg] });
+
+    // Emit with consistent format
+    socket?.emit("sendMessage", {
+      receiverId: selectedUser._id,
+      message: newMsg
+    });
+
+    return newMsg;
+  } catch (err) {
+    toast.error(err.response?.data?.message || err.message || "Failed to send message");
+    throw err;
+  }
+},
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
@@ -102,35 +136,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   // === Send Message ===
-  sendMessage: async (messageData) => {
-    const { selectedUser, messages, socket } = get();
-    if (!selectedUser?._id) {
-      const err = new Error("No recipient selected");
-      toast.error(err.message);
-      throw err;
-    }
-
-    try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-      const newMsg = res.data?.message;
-      if (!newMsg || !newMsg._id) throw new Error("Invalid message");
-
-      // Optimistically add message
-      set({ messages: [...messages, newMsg] });
-
-      // Emit to recipient
-      socket?.emit("sendMessage", {
-        receiverId: selectedUser._id,
-        message: newMsg,
-      });
-
-      return newMsg;
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to send message");
-      throw err;
-    }
-  },
-
+ 
   // === Message Helpers ===
   addMessage: (message) => {
     set((state) => {

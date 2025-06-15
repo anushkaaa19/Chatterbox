@@ -43,21 +43,38 @@ io.on("connection", (socket) => {
     if (receiverSocketId) io.to(receiverSocketId).emit("stopTyping", { userId });
   });
 
-  // One-to-one send message
-  socket.on("sendMessage", (message) => {
-    if (!message || !message.receiver) {
-      console.error("Invalid message format", message);
-      return;
-    }
-    const receiverId = message.receiver._id || message.receiver;
-    const receiverSocketId = userSocketMap[receiverId];
+// Update the sendMessage event handler
+socket.on("sendMessage", (data) => {
+  if (!data || !data.receiverId || !data.message) {
+    console.error("Invalid message format", data);
+    return;
+  }
+  
+  const receiverSocketId = userSocketMap[data.receiverId];
+  if (receiverSocketId) {
+    io.to(receiverSocketId).emit("newMessage", { 
+      message: data.message,
+      senderId: data.message.sender // Include sender ID
+    });
+    console.log(`📨 Sent message to user ${data.receiverId}`);
+  }
+});
+
+// Add this to ensure consistent event naming
+io.on("connection", (socket) => {
+  // ... existing code ...
+
+  // Add this new handler
+  socket.on("directMessage", (data) => {
+    const receiverSocketId = userSocketMap[data.receiverId];
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", { message });
-      console.log(`📨 Sent message to user ${receiverId}`);
-    } else {
-      console.log(`❌ User ${receiverId} not connected`);
+      io.to(receiverSocketId).emit("newMessage", {
+        message: data.message,
+        senderId: data.message.sender
+      });
     }
   });
+});
 
   // Forward message (optional)
   socket.on("forwardMessage", ({ message, receiverId }) => {

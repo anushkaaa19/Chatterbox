@@ -47,7 +47,6 @@ const MediaRenderer = ({ content }) => {
 
   return (
     <div className="mt-2 space-y-2">
-      {/* Image */}
       {content.image && (
         <div className="relative">
           <img
@@ -63,7 +62,6 @@ const MediaRenderer = ({ content }) => {
         </div>
       )}
 
-      {/* Audio */}
       {content.audio && (
         <div className="bg-base-300 rounded-lg p-2">
           <audio controls className="w-full">
@@ -73,7 +71,6 @@ const MediaRenderer = ({ content }) => {
         </div>
       )}
 
-      {/* File */}
       {content.file && (
         <a
           href={content.file}
@@ -129,7 +126,7 @@ const ChatContainer = () => {
     }
   }, [messages, isAtBottom]);
 
-  // Attach scroll event listener once
+  // Attach scroll event listener
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
@@ -137,14 +134,14 @@ const ChatContainer = () => {
     return () => container.removeEventListener("scroll", checkScrollPosition);
   }, []);
 
-  // Check auth status on load or when isCheckingAuth changes
+  // Check auth status
   useEffect(() => {
     if (isCheckingAuth) {
       checkAuth();
     }
   }, [isCheckingAuth, checkAuth]);
 
-  // Fetch messages & subscribe to typing events on selectedUser change
+  // Fetch messages & subscribe to typing events
   useEffect(() => {
     if (!selectedUser?._id) return;
 
@@ -156,32 +153,30 @@ const ChatContainer = () => {
     };
   }, [selectedUser?._id, getMessages, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
 
-  // Setup socket listener for incoming messages
+  // Socket listener for incoming messages (FIXED)
   useEffect(() => {
     if (!socket || !selectedUser?._id || !authUser?._id) return;
 
     const handleIncomingMessage = (data) => {
-      const message = data.message || data;
+      const message = data.message;
       if (!message) return;
 
       const senderId = message.sender?._id || message.sender;
       const receiverId = message.receiver?._id || message.receiver;
 
-      const isRelevant =
-        (senderId === authUser._id && receiverId === selectedUser._id) ||
-        (receiverId === authUser._id && senderId === selectedUser._id);
-
-      if (isRelevant) {
+      // Only add if from current chat
+      if (
+        (senderId === selectedUser._id && receiverId === authUser._id) ||
+        (senderId === authUser._id && receiverId === selectedUser._id)
+      ) {
         addMessage(message);
       }
     };
 
     socket.on("newMessage", handleIncomingMessage);
-    socket.on("message", handleIncomingMessage);
 
     return () => {
       socket.off("newMessage", handleIncomingMessage);
-      socket.off("message", handleIncomingMessage);
     };
   }, [socket, selectedUser?._id, authUser?._id, addMessage]);
 
@@ -207,7 +202,7 @@ const ChatContainer = () => {
     toggleLike(id);
   };
 
-  // Filter messages based on search term (search in text or fileName)
+  // Filter messages based on search term
   const filteredMessages = messages.filter((msg) => {
     const content = msg.content || {};
     return (
@@ -288,7 +283,6 @@ const ChatContainer = () => {
                     own ? "bg-primary text-primary-content" : "bg-base-200 text-base-content"
                   }`}
                 >
-                  {/* Message options */}
                   <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                     <MessageOptionsMenu
                       isOwnMessage={own}
@@ -298,13 +292,10 @@ const ChatContainer = () => {
                     />
                   </div>
 
-                  {/* Text content */}
                   {content.text && <p className="whitespace-pre-line">{content.text}</p>}
 
-                  {/* Media content */}
                   <MediaRenderer content={content} />
 
-                  {/* Likes */}
                   {likedBy.length > 0 && (
                     <div className="flex justify-end mt-1">
                       <button

@@ -33,30 +33,44 @@ const MessageInput = () => {
   const { socket, authUser } = useAuthStore();
 
   // Typing Indicator Logic
-  useEffect(() => {
-    if (!socket || !authUser || !selectedUser) return;
-    let timeout;
-    if (text.trim()) {
-      socket.emit("typing", {
-        fromUserId: authUser._id,
-        toUserId: selectedUser._id,
-      });
+// Update the typing indicator useEffect
+useEffect(() => {
+  if (!socket || !authUser || !selectedUser) return;
+  
+  let typingTimeout;
 
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        socket.emit("stopTyping", {
-          fromUserId: authUser._id,
-          toUserId: selectedUser._id,
-        });
-      }, 1000);
-    } else {
-      socket.emit("stopTyping", {
-        fromUserId: authUser._id,
+  const handleTyping = () => {
+    socket.emit("typing", { 
+      toUserId: selectedUser._id,
+      userId: authUser._id
+    });
+
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit("stopTyping", { 
         toUserId: selectedUser._id,
+        userId: authUser._id
       });
-    }
-    return () => clearTimeout(timeout);
-  }, [text]);
+    }, 1500);
+  };
+
+  if (text.trim()) {
+    handleTyping();
+  } else {
+    socket.emit("stopTyping", { 
+      toUserId: selectedUser._id,
+      userId: authUser._id
+    });
+  }
+
+  return () => {
+    clearTimeout(typingTimeout);
+    socket.emit("stopTyping", { 
+      toUserId: selectedUser._id,
+      userId: authUser._id
+    });
+  };
+}, [text, socket, authUser, selectedUser]);
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
