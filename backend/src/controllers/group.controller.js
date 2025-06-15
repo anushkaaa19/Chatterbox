@@ -1,6 +1,7 @@
 import { Group } from "../models/group.model.js";
 import { GroupMessage } from "../models/GroupMessage.model.js";
 import { io } from "../lib/socket.js";
+import cloudinary from "../lib/cloudinary.js";
 import { uploadToCloudinary } from "../utils/cloudinary.utils.js";
 
 // ✅ Create a group
@@ -15,12 +16,12 @@ export const createGroup = async (req, res) => {
       profilePic = uploadRes.secure_url;
     }
 
-    const uniqueMembers = [...new Set([...parsedMembers, req.user._id.toString()])];
+    const uniqueMembers = [...new Set([...parsedMembers, req.user.id])];
 
     const newGroup = await Group.create({
       name,
       members: uniqueMembers,
-      admin: req.user._id,
+      admin: req.user.id,
       profilePic,
     });
 
@@ -51,53 +52,48 @@ export const getUserGroups = async (req, res) => {
   }
 };
 
+// ✅ Send a group message
 export const sendGroupMessage = async (req, res) => {
   try {
-    console.log("➡️ Incoming group message request");
-
-    const { text = "" } = req.body;
+    const { text, image, audio } = req.body;
     const { groupId } = req.params;
     const senderId = req.user._id;
 
-    console.log("📦 Received text:", text);
-    console.log("📦 Files received:", req.files);
-
-    let imageUrl = "";
-    let audioUrl = "";
-
-    if (req.files?.image && req.files.image.tempFilePath) {
-      console.log("📤 Uploading image...");
-      const imgUpload = await uploadToCloudinary(req.files.image.tempFilePath, "group_images");
-      imageUrl = imgUpload?.secure_url || "";
-      console.log("✅ Image uploaded:", imageUrl);
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
     }
 
-    if (req.files?.audio && req.files.audio.tempFilePath) {
-      console.log("📤 Uploading audio...");
-      const audioUpload = await uploadToCloudinary(req.files.audio.tempFilePath, "group_audio", "raw");
-      audioUrl = audioUpload?.secure_url || "";
-      console.log("✅ Audio uploaded:", audioUrl);
+    let imageUrl = null;
+    let audioUrl = null;
+
+    if (image) {
+      const imgUpload = await cloudinary.uploader.upload(image, {
+        folder: "group_images",
+        resource_type: "auto",
+      });
+      imageUrl = imgUpload.secure_url;
     }
 
-    if (!text.trim() && !imageUrl && !audioUrl) {
-      console.log("❌ Empty message submitted, rejecting.");
-      return res.status(400).json({ success: false, message: "Cannot send empty message" });
+    if (audio) {
+      const audioUpload = await cloudinary.uploader.upload(audio, {
+        folder: "group_audio",
+        resource_type: "auto",
+      });
+      audioUrl = audioUpload.secure_url;
     }
 
     const newMessage = await GroupMessage.create({
       group: groupId,
       sender: senderId,
       content: {
-        text: text.trim(),
+        text,
         image: imageUrl,
         audio: audioUrl,
       },
     });
 
     await newMessage.populate("sender", "fullName profilePic _id");
-
-    console.log("📤 Emitting message to group via socket:", groupId);
-    console.log("📨 Message Content:", newMessage);
 
     io.to(groupId).emit("receiveGroupMessage", {
       groupId,
@@ -106,11 +102,10 @@ export const sendGroupMessage = async (req, res) => {
 
     res.status(201).json({ success: true, message: newMessage });
   } catch (err) {
-    console.error("💥 Error sending group message:", err);
+    console.error("Error sending group message:", err);
     res.status(500).json({ success: false, message: "Failed to send message" });
   }
 };
-
 
 // ✅ Update group (name and/or profile pic)
 export const updateGroup = async (req, res) => {

@@ -41,25 +41,9 @@ export const useChatStore = create((set, get) => ({
   unsubscribeFromTypingEvents: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
+
     socket.off("typing");
     socket.off("stopTyping");
-  },
-
-  // ✅ NEW — Listen for incoming real-time messages
-  subscribeToMessageEvents: () => {
-    const socket = useAuthStore.getState().socket;
-    if (!socket) return;
-
-    socket.on("receiveMessage", (message) => {
-      get().addMessage(message);
-    });
-  },
-
-  unsubscribeFromMessageEvents: () => {
-    const socket = useAuthStore.getState().socket;
-    if (!socket) return;
-
-    socket.off("receiveMessage");
   },
 
   getUsers: async () => {
@@ -98,36 +82,48 @@ export const useChatStore = create((set, get) => ({
       toast.error(err.message);
       throw err;
     }
-
+  
     try {
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
         messageData
       );
       const newMsg = res.data?.message ?? res.data;
-      if (!newMsg || !newMsg._id) throw new Error("Invalid message from server");
-
-      set({ messages: [...messages, newMsg] });
-
-      if (socket) {
-        socket.emit("sendMessage", newMsg); // ✅ Emit to server
+      if (!newMsg || !newMsg._id) {
+        throw new Error("Invalid message returned from server");
       }
-
+  
+      // Add to local state immediately
+      set({ messages: [...messages, newMsg] });
+  
+      // Emit socket event
+      if (socket) {
+        socket.emit("sendMessage", newMsg);
+      }
+  
       return newMsg;
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to send message";
+      const msg =
+        err.response?.data?.message || err.message || "Failed to send message";
       toast.error(msg);
       throw err;
     }
   },
-
+  
+  // Add message to state (for real-time updates)
   addMessage: (message) => {
     set((state) => {
-      const exists = state.messages.some(
-        (m) => m._id === message._id || m.id === message.id
+      // Check if message already exists
+      const exists = state.messages.some(m => 
+        m._id === message._id || 
+        m.id === message.id
       );
+      
       if (exists) return state;
-      return { messages: [...state.messages, message] };
+      
+      return { 
+        messages: [...state.messages, message] 
+      };
     });
   },
 
