@@ -8,6 +8,7 @@ import { createSocket } from "../socket.js";
 import { useChatStore } from "./useChatStore.js";
 
 const API_URL = "https://chatterbox-backend-rus5.onrender.com/api";
+const SOCKET_URL = "https://chatterbox-backend-rus5.onrender.com";
 
 export const useAuthStore = create(
   persist(
@@ -19,6 +20,7 @@ export const useAuthStore = create(
       isCheckingAuth: true,
       onlineUsers: [],
       socket: null,
+
       resetEmail: null,
       resetToken: null,
 
@@ -26,6 +28,7 @@ export const useAuthStore = create(
       setResetToken: (token) => set({ resetToken: token }),
       setAuthUser: (user) => set({ authUser: user }),
       setIsCheckingAuth: (val) => set({ isCheckingAuth: val }),
+    
 
       forgotPassword: async (email) => {
         try {
@@ -53,11 +56,13 @@ export const useAuthStore = create(
       },
 
       resetPassword: async (newPassword) => {
-        const { resetEmail: email, resetToken: token } = get();
+        const email = get().resetEmail;
+        const token = get().resetToken;
 
         if (!email || !token) {
-          toast.error("No email or token found, please verify OTP first.");
-          return { success: false, message: "Missing email or token" };
+          const msg = "No email or token found, please verify OTP first.";
+          toast.error(msg);
+          return { success: false, message: msg };
         }
 
         try {
@@ -79,14 +84,12 @@ export const useAuthStore = create(
       checkAuth: async () => {
         try {
           const res = await axiosInstance.get("/auth/check");
-          set({ authUser: res.data });
+          set({ authUser: res.data});
           get().connectSocket();
           return res.data;
         } catch (error) {
           if (error.response?.status === 401) {
             set({ authUser: null });
-          } else {
-            console.error("Auth check error:", error);
           }
           return null;
         } finally {
@@ -94,11 +97,32 @@ export const useAuthStore = create(
         }
       },
 
+      signInWithGoogle: async () => {
+        try {
+          const result = await signInWithPopup(auth, provider);
+          const user = result.user;
+
+          const res = await axiosInstance.post("/auth/google", {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          });
+
+          await get().checkAuth();
+
+          toast.success("Signed in with Google!");
+        } catch (error) {
+          await signOut(auth);
+          toast.error("Google sign-in failed");
+          throw error;
+        }
+      },
+
       signup: async (data) => {
         set({ isSigningUp: true });
         try {
           await axiosInstance.post("/auth/signup", data);
-          await new Promise((r) => setTimeout(r, 500));
           await get().checkAuth();
           toast.success("Account created successfully");
         } catch (error) {
@@ -115,11 +139,8 @@ export const useAuthStore = create(
       login: async (data) => {
         set({ isLoggingIn: true });
         try {
-          await axiosInstance.post("/auth/login", data);
-
-          setTimeout(async () => {
-            await get().checkAuth();
-          }, 300);
+          const res = await axiosInstance.post("/auth/login", data);
+          await get().checkAuth();
 
           toast.success("Logged in successfully");
           return true;
@@ -133,30 +154,24 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await signOut(auth); // Firebase logout
+          await signOut(auth);
           await axiosInstance.post("/auth/logout");
-
+          set({ authUser: null, onlineUsers: [] });
           get().disconnectSocket();
-
-          set({
-            authUser: null,
-            onlineUsers: [],
-            socket: null,
-            resetEmail: null,
-            resetToken: null,
-          });
-
           toast.success("Logged out successfully");
         } catch (error) {
           console.error("Logout error:", error);
           toast.error(error.response?.data?.message || error.message);
         }
       },
-
       updateProfile: async (data) => {
         set({ isUpdatingProfile: true });
         try {
+          // Use axiosInstance for consistency and automatic headers (including cookies)
           const response = await axiosInstance.put("/auth/update-profile", data);
+          if (response.status !== 200) {
+            throw new Error("Failed to update profile");
+          }
           set({ authUser: response.data.user });
           toast.success("Profile updated successfully");
         } catch (err) {
@@ -166,53 +181,24 @@ export const useAuthStore = create(
           set({ isUpdatingProfile: false });
         }
       },
-
-      signInWithGoogle: async () => {
-        try {
-          const result = await signInWithPopup(auth, provider);
-          const user = result.user;
-
-          const res = await axiosInstance.post("/auth/google", {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-          });
-
-          set({ authUser: res.data.user });
-          get().connectSocket();
-
-          toast.success("Signed in with Google!");
-        } catch (error) {
-          await signOut(auth);
-          const message = error.response?.data?.message || error.message || "Google sign-in failed";
-          toast.error(message);
-          throw error;
-        }
-      },
+      
+      
 
       connectSocket: () => {
         const { authUser, socket } = get();
-        if (!authUser?._id) return;
-      
-        if (socket?.connected) socket.disconnect();
-      
-        const sock = createSocket(authUser._id);
-      
-        sock.on("connect", () => {
-          console.log("🔌 Socket connected");
-      
-          // ✅ Listen to incoming real-time messages
-          useChatStore.getState().subscribeToMessageEvents();
+        if (!authUser?._id || socket?.connected) return;
+
+        const sock = io(SOCKET_URL, {
+          query: { userId: authUser._id },
+          transports: ["websocket"],
         });
-      
-        sock.on("disconnect", () => console.log("❌ Socket disconnected"));
-      
+
+        sock.on("connect", () => console.log("Socket connected"));
+        sock.on("disconnect", () => console.log("Socket disconnected"));
         sock.on("getOnlineUsers", (users) => set({ onlineUsers: users }));
-      
+
         set({ socket: sock });
       },
-      
 
       disconnectSocket: () => {
         const { socket } = get();
@@ -223,10 +209,10 @@ export const useAuthStore = create(
       },
     }),
     {
-      name: "auth-storage",
+      name: "auth-storage", // key in localStorage
       partialize: (state) => ({
         authUser: state.authUser,
-      }),
+      }), // persist only authUser
     }
   )
 );

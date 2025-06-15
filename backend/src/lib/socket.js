@@ -39,37 +39,6 @@ io.on("connection", (socket) => {
     const receiverSocketId = userSocketMap[toUserId];
     if (receiverSocketId) io.to(receiverSocketId).emit("stopTyping", { userId });
   });
-
-  socket.on("sendMessage", (data) => {
-    if (!data || !data.receiverId || !data.message) {
-      console.error("Invalid message format", data);
-      return;
-    }
-    const receiverSocketId = userSocketMap[data.receiverId];
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", {
-        message: data.message,
-        senderId: data.message.sender,
-      });
-    }
-  });
-
-  // This is the same as sendMessage, you can remove if not used separately
-  socket.on("directMessage", (data) => {
-    const receiverSocketId = userSocketMap[data.receiverId];
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", {
-        message: data.message,
-        senderId: data.message.sender,
-      });
-    }
-  });
-
-  socket.on("forwardMessage", ({ message, receiverId }) => {
-    const receiverSocketId = userSocketMap[receiverId];
-    if (receiverSocketId) io.to(receiverSocketId).emit("newMessage", { message });
-  });
-
   // Group chat events
   socket.on("joinGroup", (groupId) => {
     socket.join(groupId);
