@@ -37,7 +37,6 @@ const GroupMessageInput = () => {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
   const toggleAudioRecording = async () => {
     if (isRecordingAudio) {
       mediaRecorderRef.current.stop();
@@ -45,19 +44,21 @@ const GroupMessageInput = () => {
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorderRef.current = new MediaRecorder(stream);
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: "audio/webm", // ✅ Force audio MIME
+        });
         audioChunksRef.current = [];
-
+  
         mediaRecorderRef.current.ondataavailable = (e) => {
           audioChunksRef.current.push(e.data);
         };
-
+  
         mediaRecorderRef.current.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" }); // Keep MIME here too
           setAudioBlob(blob);
           stream.getTracks().forEach((track) => track.stop());
         };
-
+  
         mediaRecorderRef.current.start();
         setIsRecordingAudio(true);
       } catch {
@@ -65,6 +66,7 @@ const GroupMessageInput = () => {
       }
     }
   };
+  
 
   const removeAudio = () => {
     setAudioBlob(null);
