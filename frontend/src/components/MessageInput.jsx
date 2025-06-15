@@ -1,20 +1,14 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
-import {
-  Image,
-  Send,
-  X,
-  Mic,
-  StopCircle,
-  MessageCircle,
-} from "lucide-react";
+import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [audioBlob, setAudioBlob] = useState(null);
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
   const [isRecognizing, setIsRecognizing] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -22,20 +16,37 @@ const MessageInput = () => {
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
 
-  const selectedUser = useChatStore((s) => s.selectedUser);
-  const sendMessage = useChatStore((s) => s.sendMessage);
+  const authUser = useAuthStore((state) => state.authUser);
+  const selectedChat = useChatStore((state) => state.selectedChat);
+  const sendMessage = useChatStore((state) => state.sendMessage);
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result); // base64 string
-    reader.readAsDataURL(file);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "chat_uploads"); // ✅ your actual upload preset
+      const res = await fetch("https://api.cloudinary.com/v1_1/dwuadroo0/image/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        setImagePreview(data.secure_url);
+      } else {
+        toast.error("Image upload failed");
+      }
+    } catch (err) {
+      console.error("Image upload error:", err);
+      toast.error("Error uploading image");
+    }
   };
 
   const removeImage = () => {
@@ -76,8 +87,7 @@ const MessageInput = () => {
   };
 
   const toggleSpeechRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
       toast.error("Speech recognition not supported");
       return;
     }
@@ -86,6 +96,7 @@ const MessageInput = () => {
       recognitionRef.current.stop();
       setIsRecognizing(false);
     } else {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
@@ -121,26 +132,20 @@ const MessageInput = () => {
   const blobToDataURL = (blob) =>
     new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result); // base64 string
+      reader.onloadend = () => resolve(reader.result);
       reader.readAsDataURL(blob);
     });
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!selectedUser) {
-      toast.error("No user selected");
-      return;
-    }
-
+    if (!selectedChat) return toast.error("No user selected");
     if (!text.trim() && !imagePreview && !audioBlob) return;
 
     let audioDataUrl = null;
-    if (audioBlob) {
-      audioDataUrl = await blobToDataURL(audioBlob);
-    }
+    if (audioBlob) audioDataUrl = await blobToDataURL(audioBlob);
 
     try {
-      await sendMessage(selectedUser._id, {
+      await sendMessage(selectedChat._id, {
         text: text.trim(),
         image: imagePreview,
         audio: audioDataUrl,
@@ -150,34 +155,25 @@ const MessageInput = () => {
       setImagePreview(null);
       setAudioBlob(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch (err) {
+      console.error("Send message error:", err);
       toast.error("Failed to send message");
     }
   };
 
   return (
     <div className="p-4 w-full">
-      {/* Preview image */}
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
-            />
-            <button
-              onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
-            >
-              <X className="size-3" />
+            <img src={imagePreview} alt="Preview" className="w-20 h-20 rounded-lg object-cover border" />
+            <button onClick={removeImage} className="absolute -top-1.5 -right-1.5 btn btn-xs btn-circle bg-base-300">
+              <X className="w-3 h-3" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Preview audio */}
       {audioBlob && (
         <div className="mb-3 flex items-center gap-2">
           <audio controls src={URL.createObjectURL(audioBlob)} />
@@ -187,13 +183,12 @@ const MessageInput = () => {
         </div>
       )}
 
-      {/* Message form */}
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex gap-2">
           <input
             type="text"
-            className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
+            className="input input-bordered w-full input-sm sm:input-md"
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={isRecordingAudio}
@@ -201,50 +196,43 @@ const MessageInput = () => {
           <input
             type="file"
             accept="image/*"
-            className="hidden"
             ref={fileInputRef}
             onChange={handleImageChange}
+            className="hidden"
             disabled={isRecordingAudio}
           />
           <button
             type="button"
-            className={`btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
+            className={`btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             disabled={isRecordingAudio}
-            title="Upload Image"
           >
             <Image size={20} />
           </button>
         </div>
 
-        {/* Voice-to-text button */}
         <button
           type="button"
-          className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
           onClick={toggleSpeechRecognition}
-          title={isRecognizing ? "Stop Voice to Text" : "Start Voice to Text"}
+          className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
           disabled={isRecordingAudio}
         >
           <MessageCircle size={24} />
         </button>
 
-        {/* Audio recording button */}
         <button
           type="button"
-          className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
           onClick={toggleAudioRecording}
-          title={isRecordingAudio ? "Stop Recording" : "Record Audio"}
+          className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
           disabled={isRecognizing}
         >
           {isRecordingAudio ? <StopCircle size={24} /> : <Mic size={24} />}
         </button>
 
-        {/* Send button */}
         <button
           type="submit"
           className="btn btn-sm btn-circle"
           disabled={!text.trim() && !imagePreview && !audioBlob}
-          title="Send Message"
         >
           <Send size={22} />
         </button>
