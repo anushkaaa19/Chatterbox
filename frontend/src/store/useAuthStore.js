@@ -3,7 +3,9 @@ import { persist } from "zustand/middleware";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { auth, provider, signInWithPopup, signOut } from "../firebase.jsx";
-import { createSocket } from "../lib/socket.js";
+import { createSocket } from "../socket.js";
+
+import { useChatStore } from "./useChatStore.js";
 
 const API_URL = "https://chatterbox-backend-rus5.onrender.com/api";
 
