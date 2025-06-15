@@ -157,10 +157,10 @@ const GroupChatContainer = () => {
                       {/* Audio Message */}
                       {msg.content?.audio && (
   <div className="mt-2 w-full max-w-xs border border-base-300 rounded p-1">
-    <audio controls preload="auto" className="w-full">
-      <source src={msg.content.audio} type="audio/webm" />
-      Your browser does not support the audio element.
-    </audio>
+    <audio controls>
+  <source src="https://res.cloudinary.com/dwuadroo0/video/upload/v1749991457/group_audio/ic3bzn8c6dvodg8mn2m1.webm" type="audio/mpeg" />
+</audio>
+
   </div>
 )}
 
