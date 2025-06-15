@@ -20,7 +20,7 @@ const GroupChatContainer = () => {
   const socket = useAuthStore((state) => state.socket);
   const currentUser = useAuthStore((state) => state.authUser);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(""); // 🔍 Add search query state
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -88,7 +88,6 @@ const GroupChatContainer = () => {
     <div className="flex flex-col flex-1 h-full bg-base-100">
       <GroupChatHeader group={selectedGroup} />
 
-      {/* 🔍 Search Bar */}
       <div className="px-4 py-2 bg-base-200 border-b border-base-300">
         <input
           type="text"
@@ -99,7 +98,6 @@ const GroupChatContainer = () => {
         />
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
         {loading ? (
           <div className="text-center text-base-content opacity-50">
@@ -155,29 +153,21 @@ const GroupChatContainer = () => {
                           className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
                         />
                       )}
-                      {msg.content?.audio &&
-                        (() => {
-                          console.log(
-                            "Audio URL for message:",
-                            msg._id,
-                            msg.content.audio
-                          );
-                          return (
-                            <audio
-                              controls
-                              className="mt-1 w-full max-w-xs"
-                              onError={(e) =>
-                                console.error(
-                                  "Audio error on message",
-                                  msg._id,
-                                  e
-                                )
-                              }
-                            >
-                              <source src={msg.content.audio} />
-                            </audio>
-                          );
-                        })()}
+                      {msg.content?.audio && (
+                        <div className="mt-1 w-full max-w-xs">
+                          <audio
+                            controls
+                            preload="auto"
+                            className="w-full"
+                            onError={(e) =>
+                              console.error("Audio error on message", msg._id, e)
+                            }
+                          >
+                            <source src={msg.content.audio} type="audio/webm" />
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
+                      )}
                     </div>
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
