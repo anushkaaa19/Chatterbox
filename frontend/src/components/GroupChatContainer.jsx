@@ -161,16 +161,20 @@ const GroupChatContainer = () => {
     <audio
       controls
       preload="metadata"
-      className="block w-full"
+      className="w-full rounded-md border border-base-300"
       onError={(e) =>
         console.error("Audio error on message", msg._id, e)
       }
     >
-      <source src={msg.content.audio} type="audio/webm" />
+      <source
+        src={msg.content.audio}
+        type="audio/webm"
+      />
       Your browser does not support the audio element.
     </audio>
   </div>
 )}
+
 
                       
                     </div>
