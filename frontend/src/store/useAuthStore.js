@@ -4,6 +4,8 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { auth, provider, signInWithPopup, signOut } from "../firebase.jsx";
 import { createSocket } from "../socket.js";
+import { io } from "socket.io-client";
+
 
 import { useChatStore } from "./useChatStore.js";
 
