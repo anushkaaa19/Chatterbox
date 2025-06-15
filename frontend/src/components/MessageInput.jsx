@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
@@ -20,6 +20,16 @@ const MessageInput = () => {
   const selectedChat = useChatStore((state) => state.selectedChat);
   const sendMessage = useChatStore((state) => state.sendMessage);
 
+  // Reset input on chat switch
+  useEffect(() => {
+    setText("");
+    setImagePreview(null);
+    setAudioBlob(null);
+    setIsRecordingAudio(false);
+    setIsRecognizing(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [selectedChat]);
+
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -32,17 +42,14 @@ const MessageInput = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", "chat_uploads"); // ✅ your actual upload preset
+      formData.append("upload_preset", "chat_uploads");
       const res = await fetch("https://api.cloudinary.com/v1_1/dwuadroo0/image/upload", {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
-      if (data.secure_url) {
-        setImagePreview(data.secure_url);
-      } else {
-        toast.error("Image upload failed");
-      }
+      if (data.secure_url) setImagePreview(data.secure_url);
+      else toast.error("Image upload failed");
     } catch (err) {
       console.error("Image upload error:", err);
       toast.error("Error uploading image");
@@ -61,7 +68,11 @@ const MessageInput = () => {
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: "audio/webm" });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm";
+
+        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
         audioChunksRef.current = [];
 
         mediaRecorderRef.current.ondataavailable = (e) => {
@@ -69,7 +80,7 @@ const MessageInput = () => {
         };
 
         mediaRecorderRef.current.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
           setAudioBlob(blob);
           stream.getTracks().forEach((track) => track.stop());
         };
@@ -136,13 +147,36 @@ const MessageInput = () => {
       reader.readAsDataURL(blob);
     });
 
+  // Optional: Upload audio to Cloudinary instead of sending base64
+  // const uploadAudioBlob = async (blob) => {
+  //   const formData = new FormData();
+  //   formData.append("file", blob);
+  //   formData.append("upload_preset", "chat_uploads");
+  //   const res = await fetch("https://api.cloudinary.com/v1_1/dwuadroo0/raw/upload", {
+  //     method: "POST",
+  //     body: formData,
+  //   });
+  //   const data = await res.json();
+  //   return data.secure_url;
+  // };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!selectedChat) return toast.error("No user selected");
     if (!text.trim() && !imagePreview && !audioBlob) return;
 
+    // Stop speech recognition if active
+    if (recognitionRef.current && isRecognizing) {
+      recognitionRef.current.stop();
+      setIsRecognizing(false);
+    }
+
     let audioDataUrl = null;
-    if (audioBlob) audioDataUrl = await blobToDataURL(audioBlob);
+    if (audioBlob) {
+      audioDataUrl = await blobToDataURL(audioBlob);
+      // Or use cloud upload:
+      // audioDataUrl = await uploadAudioBlob(audioBlob);
+    }
 
     try {
       await sendMessage(selectedChat._id, {
@@ -206,6 +240,7 @@ const MessageInput = () => {
             onClick={() => fileInputRef.current?.click()}
             className={`btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             disabled={isRecordingAudio}
+            aria-label="Upload Image"
           >
             <Image size={20} />
           </button>
@@ -216,6 +251,7 @@ const MessageInput = () => {
           onClick={toggleSpeechRecognition}
           className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
           disabled={isRecordingAudio}
+          aria-label="Speech to Text"
         >
           <MessageCircle size={24} />
         </button>
@@ -225,6 +261,7 @@ const MessageInput = () => {
           onClick={toggleAudioRecording}
           className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
           disabled={isRecognizing}
+          aria-label="Record Audio"
         >
           {isRecordingAudio ? <StopCircle size={24} /> : <Mic size={24} />}
         </button>
@@ -233,6 +270,7 @@ const MessageInput = () => {
           type="submit"
           className="btn btn-sm btn-circle"
           disabled={!text.trim() && !imagePreview && !audioBlob}
+          aria-label="Send Message"
         >
           <Send size={22} />
         </button>

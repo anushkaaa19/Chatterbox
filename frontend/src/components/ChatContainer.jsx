@@ -1,3 +1,5 @@
+// components/ChatContainer.jsx
+
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -7,6 +9,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
+// Modal for editing a message
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText || "");
 
@@ -42,6 +45,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   );
 };
 
+// Renders any media associated with a message
 const MediaRenderer = ({ content }) => {
   if (!content) return null;
 
@@ -61,7 +65,6 @@ const MediaRenderer = ({ content }) => {
           />
         </div>
       )}
-
       {content.audio && (
         <div className="bg-base-300 rounded-lg p-2">
           <audio controls className="w-full">
@@ -70,7 +73,6 @@ const MediaRenderer = ({ content }) => {
           </audio>
         </div>
       )}
-
       {content.file && (
         <a
           href={content.file}
@@ -94,13 +96,12 @@ const ChatContainer = () => {
     getMessages,
     isMessagesLoading,
     selectedUser,
-    setSelectedUser,
     subscribeToMessages,
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
     editMessage,
     toggleLike,
-    typingUsers
+    typingUsers,
   } = useChatStore();
 
   const { authUser, isCheckingAuth } = useAuthStore();
@@ -114,7 +115,6 @@ const ChatContainer = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // Scroll handling
   const checkScrollPosition = () => {
     if (!messagesContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
@@ -134,19 +134,16 @@ const ChatContainer = () => {
     return () => container.removeEventListener("scroll", checkScrollPosition);
   }, []);
 
-  // Message subscription
   useEffect(() => {
     if (!selectedUser?._id) return;
-    
     const unsubscribe = subscribeToMessages(selectedUser._id);
     return unsubscribe;
-  }, [selectedUser?._id, subscribeToMessages]);
+  }, [selectedUser?._id]);
 
-  // Typing indicators
   useEffect(() => {
     subscribeToTypingEvents();
     return () => unsubscribeFromTypingEvents();
-  }, [subscribeToTypingEvents, unsubscribeFromTypingEvents]);
+  }, []);
 
   const isOwnMessage = (sender) => {
     const senderId = sender?._id || sender;
@@ -166,9 +163,7 @@ const ChatContainer = () => {
     setIsEditing(false);
   };
 
-  const handleLike = (id) => {
-    toggleLike(id);
-  };
+  const handleLike = (id) => toggleLike(id);
 
   const filteredMessages = messages.filter((msg) => {
     const content = msg.content || {};
@@ -208,7 +203,6 @@ const ChatContainer = () => {
         >
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.sender);
-            console.log(message);
             const content = message.content || {};
             const hasContent = content.text || content.image || content.file || content.audio;
             if (!hasContent) return null;
