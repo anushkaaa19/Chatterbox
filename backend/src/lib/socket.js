@@ -91,4 +91,4 @@ io.on("connection", (socket) => {
     console.log("🔴 Disconnected:", socket.id);
   });
 });
-export default {io,server,app};
+export { io, app, server };
