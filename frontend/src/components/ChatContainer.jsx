@@ -94,14 +94,16 @@ const ChatContainer = () => {
     getMessages,
     isMessagesLoading,
     selectedUser,
-    addMessage,
+    setSelectedUser,
+    subscribeToMessages,
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
     editMessage,
     toggleLike,
+    typingUsers
   } = useChatStore();
 
-  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
+  const { authUser, isCheckingAuth } = useAuthStore();
 
   const messageEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -112,21 +114,19 @@ const ChatContainer = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // Scroll position check handler
+  // Scroll handling
   const checkScrollPosition = () => {
     if (!messagesContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
     setIsAtBottom(scrollHeight - scrollTop - clientHeight < 50);
   };
 
-  // Scroll to bottom when messages change and user is at bottom
   useEffect(() => {
     if (isAtBottom && messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isAtBottom]);
 
-  // Attach scroll event listener
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
@@ -134,55 +134,23 @@ const ChatContainer = () => {
     return () => container.removeEventListener("scroll", checkScrollPosition);
   }, []);
 
-  // Check auth status
-  useEffect(() => {
-    if (isCheckingAuth) {
-      checkAuth();
-    }
-  }, [isCheckingAuth, checkAuth]);
-
-  // Fetch messages & subscribe to typing events
+  // Message subscription
   useEffect(() => {
     if (!selectedUser?._id) return;
+    
+    const unsubscribe = subscribeToMessages(selectedUser._id);
+    return unsubscribe;
+  }, [selectedUser?._id, subscribeToMessages]);
 
-    getMessages(selectedUser._id);
-    subscribeToTypingEvents();
-
-    return () => {
-      unsubscribeFromTypingEvents();
-    };
-  }, [selectedUser?._id, getMessages, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
-
-  // Socket listener for incoming messages (FIXED)
+  // Typing indicators
   useEffect(() => {
-    if (!socket || !selectedUser?._id || !authUser?._id) return;
-
-    const handleIncomingMessage = (data) => {
-      const message = data.message;
-      if (!message) return;
-
-      const senderId = message.sender?._id || message.sender;
-      const receiverId = message.receiver?._id || message.receiver;
-
-      // Only add if from current chat
-      if (
-        (senderId === selectedUser._id && receiverId === authUser._id) ||
-        (senderId === authUser._id && receiverId === selectedUser._id)
-      ) {
-        addMessage(message);
-      }
-    };
-
-    socket.on("newMessage", handleIncomingMessage);
-
-    return () => {
-      socket.off("newMessage", handleIncomingMessage);
-    };
-  }, [socket, selectedUser?._id, authUser?._id, addMessage]);
+    subscribeToTypingEvents();
+    return () => unsubscribeFromTypingEvents();
+  }, [subscribeToTypingEvents, unsubscribeFromTypingEvents]);
 
   const isOwnMessage = (sender) => {
     const senderId = sender?._id || sender;
-    return senderId === authUser._id;
+    return senderId === authUser?._id;
   };
 
   const handleEdit = (id, oldText) => {
@@ -202,7 +170,6 @@ const ChatContainer = () => {
     toggleLike(id);
   };
 
-  // Filter messages based on search term
   const filteredMessages = messages.filter((msg) => {
     const content = msg.content || {};
     return (
@@ -243,7 +210,6 @@ const ChatContainer = () => {
             const own = isOwnMessage(message.sender);
             const content = message.content || {};
             const hasContent = content.text || content.image || content.file || content.audio;
-
             if (!hasContent) return null;
 
             const likedBy = Array.isArray(message.likedBy) ? message.likedBy : [];
@@ -293,7 +259,6 @@ const ChatContainer = () => {
                   </div>
 
                   {content.text && <p className="whitespace-pre-line">{content.text}</p>}
-
                   <MediaRenderer content={content} />
 
                   {likedBy.length > 0 && (
@@ -303,7 +268,6 @@ const ChatContainer = () => {
                         className={`flex items-center gap-1 ${
                           likedByCurrentUser ? "text-red-500" : "text-gray-500"
                         }`}
-                        aria-label={likedByCurrentUser ? "Unlike message" : "Like message"}
                       >
                         <span>❤️</span>
                         <span className="text-xs">{likedBy.length}</span>
@@ -314,6 +278,18 @@ const ChatContainer = () => {
               </div>
             );
           })}
+
+          {typingUsers.includes(selectedUser?._id) && (
+            <div className="chat chat-start">
+              <div className="chat-bubble bg-base-200">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-100"></div>
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-200"></div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {searchTerm && filteredMessages.length === 0 && (
             <p className="text-center text-zinc-500 py-8">No messages found.</p>

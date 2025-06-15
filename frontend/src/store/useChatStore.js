@@ -15,28 +15,39 @@ export const useChatStore = create((set, get) => ({
 
   // === Subscriptions ===
  // Update the subscribeToMessages function
-subscribeToMessages: (userId) => {
-  const socket = useAuthStore.getState().socket;
-  if (!socket) return;
 
-  // Clean up any existing listener
-  if (dmMessageHandler) {
-    socket.off("newMessage", dmMessageHandler);
-  }
+  // Subscribe to incoming messages
+  subscribeToMessages: (userId) => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return () => {};
 
-  dmMessageHandler = (data) => {
-    const message = data.message;
-    const senderId = message.sender?._id || message.sender;
-    
-    // Only add if from current chat or to current chat
-    if (senderId === userId || message.receiver === userId) {
-      get().addMessage(message);
-    }
-  };
+    const handleIncomingMessage = (data) => {
+      const message = data.message;
+      const authUser = useAuthStore.getState().authUser;
+      
+      if (!message || !authUser?._id) return;
 
-  socket.on("newMessage", dmMessageHandler);
-},
+      const senderId = message.sender?._id || message.sender;
+      const receiverId = message.receiver?._id || message.receiver;
 
+      // Only add if relevant to current chat
+      if ((senderId === userId && receiverId === authUser._id) || 
+          (senderId === authUser._id && receiverId === userId)) {
+        set(state => ({
+          messages: state.messages.some(m => m._id === message._id) 
+            ? state.messages 
+            : [...state.messages, message]
+        }));
+      }
+    };
+
+    socket.on("newMessage", handleIncomingMessage);
+    set({ socketListener: handleIncomingMessage });
+
+    return () => {
+      socket.off("newMessage", handleIncomingMessage);
+    };
+  },
 // Update the sendMessage function
 sendMessage: async (messageData) => {
   const { selectedUser, messages, socket } = get();
