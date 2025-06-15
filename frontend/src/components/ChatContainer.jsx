@@ -208,6 +208,7 @@ const ChatContainer = () => {
         >
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.sender);
+            console.log(message);
             const content = message.content || {};
             const hasContent = content.text || content.image || content.file || content.audio;
             if (!hasContent) return null;
