@@ -146,6 +146,7 @@ const MessageInput = () => {
     }
   };
 
+  // ======= FIXED handleSendMessage: use receiver field, not 'to' =======
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !audioBlob) return;
@@ -163,8 +164,9 @@ const MessageInput = () => {
         audioUrl = await uploadToCloudinary(audioFile, "video");
       }
 
+      // ** Important change: send message with `receiver` field as expected by server **
       await sendMessage({
-        to: selectedUser._id,
+        receiver: selectedUser._id,
         text: text.trim(),
         image: imageUrl,
         audio: audioUrl,
