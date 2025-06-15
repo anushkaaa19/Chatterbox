@@ -108,6 +108,9 @@ const GroupChatContainer = () => {
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
 
+            console.log("Rendering message:", msg);
+
+
             return (
               <div
                 key={msg._id}
