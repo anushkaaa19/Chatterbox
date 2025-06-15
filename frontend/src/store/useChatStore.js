@@ -121,20 +121,24 @@ export const useChatStore = create((set, get) => ({
   toggleLike: (messageId) => {
     const { authUser } = useAuthStore.getState();
     if (!authUser || !authUser._id) return;
-
+  
     set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg._id === messageId
-          ? {
-              ...msg,
-              likes: msg.likes.includes(authUser._id)
-                ? msg.likes.filter((uid) => uid !== authUser._id)
-                : [...msg.likes, authUser._id],
-            }
-          : msg
-      ),
+      messages: state.messages.map((msg) => {
+        if (msg._id !== messageId) return msg;
+  
+        const currentLikes = Array.isArray(msg.likes) ? msg.likes : [];
+        const hasLiked = currentLikes.includes(authUser._id);
+  
+        return {
+          ...msg,
+          likes: hasLiked
+            ? currentLikes.filter((uid) => uid !== authUser._id)
+            : [...currentLikes, authUser._id],
+        };
+      }),
     }));
   },
+  
 
   subscribeToMessages: () => {
     const { selectedUser } = get();

@@ -7,7 +7,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing message
+// Edit modal for any message type
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -19,32 +19,23 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
-        <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
+      <div className="bg-base-100 rounded-xl p-6 shadow-2xl w-full max-w-md border border-base-300">
+        <h2 className="text-xl font-semibold text-base-content mb-4">Edit Message</h2>
 
         <textarea
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
-          className="w-full p-3 text-sm border border-zinc-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="textarea textarea-bordered w-full"
           rows={4}
           placeholder="Edit your message..."
         />
 
         <div className="mt-5 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 transition"
-          >
-            Cancel
-          </button>
+          <button onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
           <button
             onClick={() => onSave(newText)}
             disabled={newText.trim() === ""}
-            className={`px-4 py-2 text-sm rounded-md transition font-medium ${
-              newText.trim() === ""
-                ? "bg-blue-300 text-white cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
+            className="btn btn-primary btn-sm"
           >
             Save
           </button>
@@ -80,13 +71,10 @@ const ChatContainer = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search bar state
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (isCheckingAuth) {
-      checkAuth();
-    }
+    if (isCheckingAuth) checkAuth();
   }, [isCheckingAuth, checkAuth]);
 
   useEffect(() => {
@@ -114,14 +102,12 @@ const ChatContainer = () => {
   const isOwnMessage = (senderId) => {
     if (!senderId) return false;
     if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
+    return senderId._id === authUser._id;
   };
 
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
-    setEditingOldText(oldText);
+    setEditingOldText(oldText || "");
     setIsEditing(true);
   };
 
@@ -144,21 +130,21 @@ const ChatContainer = () => {
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
-      {/* ✅ Search Bar */}
+      {/* Search bar */}
       <div className="px-4 pt-4">
         <input
           type="text"
           placeholder="Search messages..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input input-bordered w-full"
         />
       </div>
 
       {isMessagesLoading ? (
         <MessageSkeleton />
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.senderId);
             const likes = Array.isArray(message.likes) ? message.likes : [];
@@ -167,10 +153,10 @@ const ChatContainer = () => {
             return (
               <div
                 key={message._id}
-                className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
+                className={`chat ${own ? "chat-end" : "chat-start"} group`}
               >
                 <div className="chat-image avatar">
-                  <div className="size-10 rounded-full border">
+                  <div className="w-10 rounded-full border border-base-300">
                     <img
                       src={
                         own
@@ -182,57 +168,91 @@ const ChatContainer = () => {
                   </div>
                 </div>
 
-                <div className="chat-header mb-1">
-                  <time className="text-xs opacity-50 ml-1">
-                    {formatMessageTime(message.createdAt)}
-                  </time>
+                <div className="chat-header text-xs text-base-content opacity-60 mb-1">
+                  <time>{formatMessageTime(message.createdAt)}</time>
                 </div>
 
-                <div className="chat-bubble flex flex-col relative">
+                <div
+                  className={`group flex flex-col relative p-3 rounded-2xl shadow max-w-xs md:max-w-sm ${
+                    own
+                      ? "bg-primary text-primary-content"
+                      : "bg-base-200 text-base-content"
+                  }`}
+                >
                   {message.text && (
-                    <>
-                      <p>
-                        {message.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
+                    <p className="break-words">
+                      {message.text}
+                      {message.edited && (
+                        <span className="text-xs ml-2 opacity-70">(edited)</span>
+                      )}
+                    </p>
+                  )}
 
-                      {likedByCurrentUser && (
+                  {message.image && (
+                    <>
+                      <img
+                        src={message.image}
+                        alt="Attached"
+                        className="mt-2 rounded-lg border object-cover max-w-xs"
+                      />
+                      {own && (
                         <button
-                          aria-label="Unlike message"
-                          onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
+                          onClick={() => handleEdit(message._id, message.text)}
+                          className="text-xs text-blue-200 hover:underline mt-1 self-end"
                         >
-                          ❤️
+                          Edit caption
                         </button>
                       )}
                     </>
                   )}
 
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="Attached"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-                  {message.file && (
-                    <a
-                      href={message.file}
-                      download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
                   {message.audio && (
-                    <audio controls src={message.audio} className="mt-2 max-w-xs" />
+                    <>
+                      <audio controls src={message.audio} className="mt-2 max-w-xs" />
+                      {own && (
+                        <button
+                          onClick={() => handleEdit(message._id, message.text)}
+                          className="text-xs text-blue-200 hover:underline mt-1 self-end"
+                        >
+                          Edit transcript
+                        </button>
+                      )}
+                    </>
                   )}
 
-                  <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
+                  {message.file && (
+                    <>
+                      <a
+                        href={message.file}
+                        download={message.fileName || "file"}
+                        className="block mt-2 underline text-blue-200"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        📎 {message.fileName || "Download file"}
+                      </a>
+                      {own && (
+                        <button
+                          onClick={() => handleEdit(message._id, message.text)}
+                          className="text-xs text-blue-200 hover:underline mt-1 self-end"
+                        >
+                          Edit note
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {likedByCurrentUser && (
+                    <button
+                      aria-label="Unlike message"
+                      onClick={() => handleLike(message._id)}
+                      className="mt-2 text-red-500 text-sm self-start"
+                    >
+                      ❤️
+                    </button>
+                  )}
+
+                  <div className="hidden group-hover:block absolute top-0 right-0">
                     <MessageOptionsMenu
                       isOwnMessage={own}
                       message={message}
