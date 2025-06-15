@@ -109,6 +109,7 @@ const GroupChatContainer = () => {
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
+
             return (
               <div
                 key={msg._id}
@@ -129,7 +130,11 @@ const GroupChatContainer = () => {
                       </div>
                     </div>
                   )}
-                  <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
+                  <div
+                    className={`flex flex-col ${
+                      isOwn ? "items-end" : "items-start"
+                    }`}
+                  >
                     {!isOwn && (
                       <div className="text-xs text-base-content opacity-60 mb-1">
                         {msg.sender?.fullName}
@@ -150,11 +155,29 @@ const GroupChatContainer = () => {
                           className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
                         />
                       )}
-                      {msg.content?.audio && (
-                        <audio controls className="mt-1 w-full max-w-xs">
-                          <source src={msg.content.audio} />
-                        </audio>
-                      )}
+                      {msg.content?.audio &&
+                        (() => {
+                          console.log(
+                            "Audio URL for message:",
+                            msg._id,
+                            msg.content.audio
+                          );
+                          return (
+                            <audio
+                              controls
+                              className="mt-1 w-full max-w-xs"
+                              onError={(e) =>
+                                console.error(
+                                  "Audio error on message",
+                                  msg._id,
+                                  e
+                                )
+                              }
+                            >
+                              <source src={msg.content.audio} />
+                            </audio>
+                          );
+                        })()}
                     </div>
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
