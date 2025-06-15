@@ -36,11 +36,11 @@ export const sendMessages = async (req, res) => {
     if (audio) {
       const uploadedAudio = await cloudinary.uploader.upload(audio, {
         folder: "message_audio",
-        resource_type: "auto"
+        resource_type: "video", // ✅ Force video to ensure Cloudinary handles .webm/.mp3 correctly
       });
       audioUrl = uploadedAudio.secure_url;
     }
-
+    
     const newMessage = await Message.create({
       sender: senderId,
       receiver: receiverId,
