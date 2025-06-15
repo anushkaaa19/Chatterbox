@@ -7,49 +7,86 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Modal for editing message
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
-  const [newText, setNewText] = useState(oldText);
+  const [newText, setNewText] = useState(oldText || "");
 
   useEffect(() => {
-    setNewText(oldText);
+    setNewText(oldText || "");
   }, [oldText]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md border border-zinc-200">
-        <h2 className="text-xl font-semibold text-zinc-800 mb-4">Edit Message</h2>
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
+      <div className="bg-base-100 p-6 rounded-xl shadow-lg w-full max-w-md">
+        <h3 className="text-lg font-bold mb-2">Edit Message</h3>
         <textarea
+          className="textarea textarea-bordered w-full h-24 resize-none"
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
-          className="w-full p-3 text-sm border border-zinc-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={4}
-          placeholder="Edit your message..."
         />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm text-zinc-600 hover:bg-zinc-100 transition"
-          >
+        <div className="flex justify-end mt-4 gap-2">
+          <button className="btn btn-sm btn-ghost" onClick={onClose}>
             Cancel
           </button>
           <button
-            onClick={() => onSave(newText)}
-            disabled={newText.trim() === ""}
-            className={`px-4 py-2 text-sm rounded-md transition font-medium ${
-              newText.trim() === ""
-                ? "bg-blue-300 text-white cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
+            className="btn btn-sm btn-primary"
+            onClick={() => onSave(newText.trim())}
+            disabled={!newText.trim()}
           >
             Save
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+const MediaRenderer = ({ content }) => {
+  if (!content) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {/* Image */}
+      {content.image && (
+        <div className="relative">
+          <img
+            src={content.image}
+            alt="Sent media"
+            className="max-w-full max-h-64 rounded-lg border object-contain"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.parentNode.innerHTML =
+                '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
+            }}
+          />
+        </div>
+      )}
+
+      {/* Audio */}
+      {content.audio && (
+        <div className="bg-base-300 rounded-lg p-2">
+          <audio controls className="w-full">
+            <source src={content.audio} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      )}
+
+      {/* File */}
+      {content.file && (
+        <a
+          href={content.file}
+          download={content.fileName || "file"}
+          className="flex items-center gap-2 p-2 bg-base-300 rounded-lg hover:bg-base-200 transition"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="text-2xl">📎</span>
+          <span className="truncate flex-1">{content.fileName || "Download file"}</span>
+          <span className="text-xs opacity-75">Click to download</span>
+        </a>
+      )}
     </div>
   );
 };
@@ -60,63 +97,97 @@ const ChatContainer = () => {
     getMessages,
     isMessagesLoading,
     selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
+    addMessage,
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
-    typingUsers,
+    editMessage,
+    toggleLike,
   } = useChatStore();
 
-  const {
-    authUser,
-    isCheckingAuth,
-    socket,
-    setAuthUser,
-    setIsCheckingAuth,
-    checkAuth,
-  } = useAuthStore();
+  const { authUser, isCheckingAuth, socket, checkAuth } = useAuthStore();
 
   const messageEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ Search bar state
+  // Scroll position check handler
+  const checkScrollPosition = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    setIsAtBottom(scrollHeight - scrollTop - clientHeight < 50);
+  };
 
+  // Scroll to bottom when messages change and user is at bottom
+  useEffect(() => {
+    if (isAtBottom && messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isAtBottom]);
+
+  // Attach scroll event listener once
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", checkScrollPosition);
+    return () => container.removeEventListener("scroll", checkScrollPosition);
+  }, []);
+
+  // Check auth status on load or when isCheckingAuth changes
   useEffect(() => {
     if (isCheckingAuth) {
       checkAuth();
     }
   }, [isCheckingAuth, checkAuth]);
 
+  // Fetch messages & subscribe to typing events on selectedUser change
   useEffect(() => {
-    if (!selectedUser?._id || !socket) return;
+    if (!selectedUser?._id) return;
 
     getMessages(selectedUser._id);
-    subscribeToMessages();
     subscribeToTypingEvents();
 
     return () => {
-      unsubscribeFromMessages();
       unsubscribeFromTypingEvents();
     };
-  }, [selectedUser?._id, socket]);
+  }, [selectedUser?._id, getMessages, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
 
+  // Setup socket listener for incoming messages
   useEffect(() => {
-    if (messageEndRef.current && messages.length) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
+    if (!socket || !selectedUser?._id || !authUser?._id) return;
 
-  if (isCheckingAuth) return <div>Loading chat...</div>;
-  if (!authUser?._id) return <div>Please log in to use the chat.</div>;
+    const handleIncomingMessage = (data) => {
+      const message = data.message || data;
+      if (!message) return;
 
-  const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    if (typeof senderId === "object" && senderId._id)
-      return senderId._id === authUser._id;
-    return false;
+      const senderId = message.sender?._id || message.sender;
+      const receiverId = message.receiver?._id || message.receiver;
+
+      const isRelevant =
+        (senderId === authUser._id && receiverId === selectedUser._id) ||
+        (receiverId === authUser._id && senderId === selectedUser._id);
+
+      if (isRelevant) {
+        addMessage(message);
+      }
+    };
+
+    socket.on("newMessage", handleIncomingMessage);
+    socket.on("message", handleIncomingMessage);
+
+    return () => {
+      socket.off("newMessage", handleIncomingMessage);
+      socket.off("message", handleIncomingMessage);
+    };
+  }, [socket, selectedUser?._id, authUser?._id, addMessage]);
+
+  const isOwnMessage = (sender) => {
+    const senderId = sender?._id || sender;
+    return senderId === authUser._id;
   };
 
   const handleEdit = (id, oldText) => {
@@ -127,119 +198,127 @@ const ChatContainer = () => {
 
   const handleSaveEdit = (newText) => {
     if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
+      editMessage(editingMessageId, newText);
     }
     setIsEditing(false);
   };
 
   const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
+    toggleLike(id);
   };
 
-  const filteredMessages = messages.filter((msg) =>
-    msg.text?.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  );
+  // Filter messages based on search term (search in text or fileName)
+  const filteredMessages = messages.filter((msg) => {
+    const content = msg.content || {};
+    return (
+      content.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      content.fileName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  if (isCheckingAuth) return <div className="p-4">Loading chat...</div>;
+  if (!authUser?._id) return <div className="p-4">Please log in to use the chat.</div>;
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
+    <div className="flex-1 flex flex-col bg-base-100">
       <ChatHeader />
 
-      {/* ✅ Search Bar */}
       <div className="px-4 pt-4">
         <input
           type="text"
           placeholder="Search messages..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full input input-bordered input-sm"
+          spellCheck={false}
+          autoComplete="off"
         />
       </div>
 
       {isMessagesLoading ? (
         <MessageSkeleton />
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+          onScroll={checkScrollPosition}
+          style={{ scrollbarWidth: "thin" }}
+        >
           {(searchTerm ? filteredMessages : messages).map((message) => {
-            const own = isOwnMessage(message.senderId);
-            const likes = Array.isArray(message.likes) ? message.likes : [];
-            const likedByCurrentUser = likes.includes(authUser._id);
+            const own = isOwnMessage(message.sender);
+            const content = message.content || {};
+            const hasContent = content.text || content.image || content.file || content.audio;
+
+            if (!hasContent) return null;
+
+            const likedBy = Array.isArray(message.likedBy) ? message.likedBy : [];
+            const likedByCurrentUser = likedBy.some(
+              (id) => id?.toString() === authUser._id.toString()
+            );
 
             return (
               <div
-                key={message._id}
+                key={message._id || message.id}
                 className={`chat ${own ? "chat-end" : "chat-start"} group relative`}
               >
                 <div className="chat-image avatar">
-                  <div className="size-10 rounded-full border">
+                  <div className="w-10 rounded-full border">
                     <img
                       src={
                         own
                           ? authUser.profilePic || "/avatar.png"
                           : selectedUser?.profilePic || "/avatar.png"
                       }
-                      alt="Profile pic"
+                      alt="User"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/avatar.png";
+                      }}
                     />
                   </div>
                 </div>
 
-                <div className="chat-header mb-1">
-                  <time className="text-xs opacity-50 ml-1">
-                    {formatMessageTime(message.createdAt)}
-                  </time>
+                <div className="chat-header text-xs mb-1 opacity-70 select-none">
+                  {formatMessageTime(message.createdAt || message.timestamp)}
+                  {message.edited && <span className="text-xs italic ml-1">(edited)</span>}
                 </div>
 
-                <div className="chat-bubble flex flex-col relative">
-                  {message.text && (
-                    <>
-                      <p>
-                        {message.text}
-                        {message.edited && (
-                          <span className="text-xs ml-2">(edited)</span>
-                        )}
-                      </p>
-
-                      {likedByCurrentUser && (
-                        <button
-                          aria-label="Unlike message"
-                          onClick={() => handleLike(message._id)}
-                          className="mt-1 text-red-500 self-start"
-                        >
-                          ❤️
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="Attached"
-                      className="mt-2 max-w-xs rounded-lg border object-cover"
-                    />
-                  )}
-                  {message.file && (
-                    <a
-                      href={message.file}
-                      download={message.fileName || "file"}
-                      className="block mt-2 underline text-blue-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📎 {message.fileName || "Download file"}
-                    </a>
-                  )}
-                  {message.audio && (
-                    <audio controls src={message.audio} className="mt-2 max-w-xs" />
-                  )}
-
-                  <div className="hidden group-hover:block ml-2 absolute top-0 right-0">
+                <div
+                  className={`chat-bubble max-w-xs break-words p-3 relative ${
+                    own ? "bg-primary text-primary-content" : "bg-base-200 text-base-content"
+                  }`}
+                >
+                  {/* Message options */}
+                  <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                     <MessageOptionsMenu
                       isOwnMessage={own}
-                      message={message}
-                      onEdit={() => handleEdit(message._id, message.text)}
+                      onEdit={() => handleEdit(message._id, content.text)}
                       onLike={() => handleLike(message._id)}
+                      liked={likedByCurrentUser}
                     />
                   </div>
+
+                  {/* Text content */}
+                  {content.text && <p className="whitespace-pre-line">{content.text}</p>}
+
+                  {/* Media content */}
+                  <MediaRenderer content={content} />
+
+                  {/* Likes */}
+                  {likedBy.length > 0 && (
+                    <div className="flex justify-end mt-1">
+                      <button
+                        onClick={() => handleLike(message._id)}
+                        className={`flex items-center gap-1 ${
+                          likedByCurrentUser ? "text-red-500" : "text-gray-500"
+                        }`}
+                        aria-label={likedByCurrentUser ? "Unlike message" : "Like message"}
+                      >
+                        <span>❤️</span>
+                        <span className="text-xs">{likedBy.length}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

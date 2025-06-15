@@ -1,180 +1,141 @@
-import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
+import User from "../models/user.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 
-// ✅ Get users for sidebar
+// Get all users except current user (for sidebar)
 export const getUsersForSidebar = async (req, res) => {
   try {
-    const loggedInUserId = req.user._id;
-
-    const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
-
-    res.status(200).json({
-      success: true,
-      users: filteredUsers,
-      count: filteredUsers.length
-    });
-  } catch (error) {
-    console.error("Error in getUsersForSidebar:", error.message);
-    res.status(500).json({
-      success: false,
-      error: "Internal server error",
-      message: error.message
-    });
-  }
-};
-
-// ✅ Edit a message
-export const editMessage = async (req, res) => {
-  const { id } = req.params;
-  const { newText } = req.body;
-  const userId = req.user._id;
-
-  try {
-    const message = await Message.findById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message not found" });
-    }
-
-    if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({ success: false, message: "Unauthorized" });
-    }
-
-    message.text = newText;
-    message.edited = true;
-    await message.save();
-
-    res.status(200).json({ success: true, message });
+    const users = await User.find({ _id: { $ne: req.user._id } }).select("-password");
+    res.status(200).json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Toggle like/unlike
-export const toggleLike = async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user._id;
-
+// Send one-to-one message (text, image, audio)
+export const sendMessages = async (req, res) => {
   try {
-    const message = await Message.findById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message not found" });
+    const { id: receiverId } = req.params;
+    const { text, image, audio } = req.body;
+    const senderId = req.user._id;
+
+    let imageUrl = null;
+    let audioUrl = null;
+
+    if (image) {
+      const uploadedImage = await cloudinary.uploader.upload(image, {
+        folder: "message_images",
+        resource_type: "auto",
+      });
+      imageUrl = uploadedImage.secure_url;
     }
 
-    const index = message.likes.indexOf(userId);
-    if (index === -1) {
-      message.likes.push(userId);
-    } else {
-      message.likes.splice(index, 1);
+    if (audio) {
+      const uploadedAudio = await cloudinary.uploader.upload(audio, {
+        folder: "message_audio",
+        resource_type: "video", // To handle webm, mp3 correctly
+      });
+      audioUrl = uploadedAudio.secure_url;
     }
 
-    await message.save();
-    res.status(200).json({ success: true, message });
+    const newMessage = await Message.create({
+      sender: senderId,
+      receiver: receiverId,
+      content: {
+        text: text || "",
+        image: imageUrl,
+        audio: audioUrl,
+      },
+    });
+
+    // Emit to receiver
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) io.to(receiverSocketId).emit("newMessage", { message: newMessage });
+
+    // Emit to sender (for real-time UI update)
+    const senderSocketId = getReceiverSocketId(senderId.toString());
+    if (senderSocketId) io.to(senderSocketId).emit("newMessage", { message: newMessage });
+
+    res.status(201).json({ success: true, message: newMessage });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Get messages between two users
+// Get one-to-one messages (chat history)
 export const getMessages = async (req, res) => {
   try {
-    const { id: userToChatId } = req.params;
-    const myId = req.user._id;
-
-    if (!userToChatId) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID parameter is required"
-      });
-    }
+    const senderId = req.user._id;
+    const receiverId = req.params.id;
 
     const messages = await Message.find({
       $or: [
-        { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId }
-      ]
+        { sender: senderId, receiver: receiverId },
+        { sender: receiverId, receiver: senderId },
+      ],
     }).sort({ createdAt: 1 });
 
-    res.status(200).json({
-      success: true,
-      messages,
-      count: messages.length
-    });
-  } catch (error) {
-    console.error("Error in getMessages controller:", error.message);
-    res.status(500).json({
-      success: false,
-      error: "Internal server error",
-      message: process.env.NODE_ENV === "development" ? error.message : undefined
-    });
+    res.status(200).json({ success: true, messages });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Send message (text/image/audio)
-export const sendMessages = async (req, res) => {
+// Edit a message (only sender can edit)
+export const editMessage = async (req, res) => {
   try {
-    const { text, image, audio } = req.body;
-    const { id: receiverId } = req.params;
-    const senderId = req.user._id;
+    const { id } = req.params;
+    const { newText } = req.body;
+    const userId = req.user._id;
 
-    if (!receiverId) {
-      return res.status(400).json({ success: false, message: "Receiver ID required" });
+    const message = await Message.findById(id);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+
+    if (message.sender.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    let imageUrl, audioUrl;
+    message.content.text = newText;
+    message.edited = true;
+    await message.save();
 
-    // Upload image if exists
-    if (image) {
-      const imgUpload = await cloudinary.uploader.upload(image, {
-        folder: "message_images",
-        resource_type: "auto"
-      });
-      imageUrl = imgUpload.secure_url;
+    // Optionally emit edited message via socket here if needed
+
+    res.status(200).json({ success: true, message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Toggle like on message
+export const toggleLike = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(id);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+
+    if (!Array.isArray(message.likedBy)) {
+      message.likedBy = [];
     }
 
-    // Upload audio if exists
-    if (audio) {
-      const audioUpload = await cloudinary.uploader.upload(audio, {
-        folder: "message_audio",
-        resource_type: "auto"
-      });
-      audioUrl = audioUpload.secure_url;
+    const userIdStr = userId.toString();
+    const alreadyLiked = message.likedBy.some(id => id.toString() === userIdStr);
+
+    if (alreadyLiked) {
+      message.likedBy = message.likedBy.filter(id => id.toString() !== userIdStr);
+    } else {
+      message.likedBy.push(userId);
     }
 
-    const newMessage = new Message({
-      senderId,
-      receiverId,
-      text: text || "",
-      image: imageUrl,
-      audio: audioUrl
-    });
+    await message.save();
 
-    await newMessage.save();
+    // Optionally emit like update via socket here
 
-    // Send real-time notification
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
-
-    res.status(201).json({
-      success: true,
-      message: {
-        _id: newMessage._id,
-        senderId,
-        receiverId,
-        text: newMessage.text,
-        image: newMessage.image,
-        audio: newMessage.audio,
-        createdAt: newMessage.createdAt
-      }
-    });
-  } catch (error) {
-    console.error("Error in sendMessages controller:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error"
-    });
+    res.status(200).json({ success: true, message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

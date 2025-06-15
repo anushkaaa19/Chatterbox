@@ -1,8 +1,9 @@
-// src/store/useChatStore.js
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
+
+let dmMessageHandler = null;
 
 export const useChatStore = create((set, get) => ({
   users: [],
@@ -12,18 +13,31 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   typingUsers: [],
 
-  addTypingUser: (userId) => {
-    set((state) => ({
-      typingUsers: state.typingUsers.includes(userId)
-        ? state.typingUsers
-        : [...state.typingUsers, userId],
-    }));
+  // === Subscriptions ===
+  subscribeToMessages: (userId) => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    if (dmMessageHandler) {
+      socket.off("receiveMessage", dmMessageHandler);
+    }
+
+    dmMessageHandler = ({ senderId, message }) => {
+      // Only add if from current chat
+      if (senderId === userId) {
+        get().addMessage(message);
+      }
+    };
+
+    socket.on("receiveMessage", dmMessageHandler);
   },
 
-  removeTypingUser: (userId) => {
-    set((state) => ({
-      typingUsers: state.typingUsers.filter((id) => id !== userId),
-    }));
+  unsubscribeFromMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket && dmMessageHandler) {
+      socket.off("receiveMessage", dmMessageHandler);
+      dmMessageHandler = null;
+    }
   },
 
   subscribeToTypingEvents: () => {
@@ -47,37 +61,49 @@ export const useChatStore = create((set, get) => ({
     socket.off("stopTyping");
   },
 
+  // === Typing ===
+  addTypingUser: (userId) => {
+    set((state) => ({
+      typingUsers: state.typingUsers.includes(userId)
+        ? state.typingUsers
+        : [...state.typingUsers, userId],
+    }));
+  },
+
+  removeTypingUser: (userId) => {
+    set((state) => ({
+      typingUsers: state.typingUsers.filter((id) => id !== userId),
+    }));
+  },
+
+  // === Fetching ===
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
-      const users = res.data?.users ?? [];
-      set({ users });
+      set({ users: res.data?.users ?? [] });
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to load users";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || err.message || "Failed to load users");
     } finally {
       set({ isUsersLoading: false });
     }
   },
 
   getMessages: async (userId) => {
-    set({ isMessagesLoading: true });
+    set({ isMessagesLoading: true, messages: [] });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
-      const data = res.data?.messages ?? res.data;
-      set({ messages: Array.isArray(data) ? data : [] });
+      set({ messages: res.data?.messages ?? [] });
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to load messages";
-      toast.error(msg);
-      set({ messages: [] });
+      toast.error(err.response?.data?.message || err.message || "Failed to load messages");
     } finally {
       set({ isMessagesLoading: false });
     }
   },
 
+  // === Send Message ===
   sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
+    const { selectedUser, messages, socket } = get();
     if (!selectedUser?._id) {
       const err = new Error("No recipient selected");
       toast.error(err.message);
@@ -85,78 +111,93 @@ export const useChatStore = create((set, get) => ({
     }
 
     try {
-      const res = await axiosInstance.post(
-        `/messages/send/${selectedUser._id}`,
-        messageData
-      );
-      const newMsg = res.data?.message ?? res.data;
-      if (!newMsg || !newMsg._id) {
-        throw new Error("Invalid message returned from server");
-      }
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      const newMsg = res.data?.message;
+      if (!newMsg || !newMsg._id) throw new Error("Invalid message");
+
+      // Optimistically add message
       set({ messages: [...messages, newMsg] });
+
+      // Emit to recipient
+      socket?.emit("sendMessage", {
+        receiverId: selectedUser._id,
+        message: newMsg,
+      });
+
       return newMsg;
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Failed to send message";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || err.message || "Failed to send message");
       throw err;
     }
   },
 
+  // === Message Helpers ===
+  addMessage: (message) => {
+    set((state) => {
+      const exists = state.messages.some((m) => m._id === message._id || m.id === message.id);
+      return exists ? state : { messages: [...state.messages, message] };
+    });
+  },
+
   updateMessage: (updatedMessage) => {
-    const updated = get().messages.map((msg) =>
-      msg._id === updatedMessage._id ? updatedMessage : msg
-    );
-    set({ messages: updated });
-  },
-
-  editMessage: async (id, newText) => {
-    try {
-      const res = await axiosInstance.put(`/messages/edit/${id}`, { newText });
-      get().updateMessage(res.data.message);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to edit message");
-    }
-  },
-
-  toggleLike: (messageId) => {
-    const { authUser } = useAuthStore.getState();
-    if (!authUser || !authUser._id) return;
-
     set((state) => ({
       messages: state.messages.map((msg) =>
-        msg._id === messageId
-          ? {
-              ...msg,
-              likes: msg.likes.includes(authUser._id)
-                ? msg.likes.filter((uid) => uid !== authUser._id)
-                : [...msg.likes, authUser._id],
-            }
-          : msg
+        msg._id === updatedMessage._id ? updatedMessage : msg
       ),
     }));
   },
 
-  subscribeToMessages: () => {
-    const { selectedUser } = get();
-    if (!selectedUser) return;
-
-    const socket = useAuthStore.getState().socket;
-
-    socket.on("newMessage", (newMessage) => {
-      if (newMessage.senderId !== selectedUser._id) return;
-
-      set({
-        messages: [...get().messages, newMessage],
-      });
-    });
-  },
-
-  unsubscribeFromMessages: () => {
-    const socket = useAuthStore.getState().socket;
-    if (socket) {
-      socket.off("newMessage");
+  editMessage: async (messageId, newText) => {
+    try {
+      const res = await axiosInstance.put(`/messages/edit/${messageId}`, { newText });
+      const updatedMsg = res.data?.message;
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === messageId
+            ? { ...msg, content: { ...msg.content, text: newText }, edited: true }
+            : msg
+        ),
+      }));
+      toast.success("Message edited");
+    } catch (err) {
+      toast.error("Failed to edit message");
+      console.error(err);
     }
   },
 
-  setSelectedUser: (user) => set({ selectedUser: user }),
+  toggleLike: async (messageId) => {
+    try {
+      const res = await axiosInstance.post(`/messages/like/${messageId}`);
+      const updatedMsg = res.data?.message;
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === messageId ? { ...msg, likedBy: updatedMsg.likedBy } : msg
+        ),
+      }));
+    } catch (err) {
+      toast.error("Failed to like message");
+      console.error(err);
+    }
+  },
+
+  // === Selection ===
+  setSelectedUser: (user) => {
+    const socket = useAuthStore.getState().socket;
+    const prevUser = get().selectedUser;
+
+    if (socket && prevUser?._id) {
+      socket.emit("leaveRoom", prevUser._id);
+    }
+
+    if (socket && user?._id) {
+      socket.emit("joinRoom", user._id);
+    }
+
+    set({ selectedUser: user, messages: [] });
+
+    if (user?._id) {
+      get().getMessages(user._id);
+      get().subscribeToMessages(user._id);
+    }
+  },
 }));
