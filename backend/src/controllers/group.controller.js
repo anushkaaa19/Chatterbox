@@ -1,7 +1,6 @@
 import { Group } from "../models/group.model.js";
 import { GroupMessage } from "../models/GroupMessage.model.js";
 import { io } from "../lib/socket.js";
-import cloudinary from "../lib/cloudinary.js";
 import { uploadToCloudinary } from "../utils/cloudinary.utils.js";
 
 // ✅ Create a group
@@ -16,12 +15,12 @@ export const createGroup = async (req, res) => {
       profilePic = uploadRes.secure_url;
     }
 
-    const uniqueMembers = [...new Set([...parsedMembers, req.user.id])];
+    const uniqueMembers = [...new Set([...parsedMembers, req.user._id.toString()])];
 
     const newGroup = await Group.create({
       name,
       members: uniqueMembers,
-      admin: req.user.id,
+      admin: req.user._id,
       profilePic,
     });
 
@@ -55,7 +54,7 @@ export const getUserGroups = async (req, res) => {
 // ✅ Send a group message
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { text, image, audio } = req.body;
+    const { text } = req.body;
     const { groupId } = req.params;
     const senderId = req.user._id;
 
@@ -67,19 +66,13 @@ export const sendGroupMessage = async (req, res) => {
     let imageUrl = null;
     let audioUrl = null;
 
-    if (image) {
-      const imgUpload = await cloudinary.uploader.upload(image, {
-        folder: "group_images",
-        resource_type: "auto",
-      });
+    if (req.files?.image) {
+      const imgUpload = await uploadToCloudinary(req.files.image.tempFilePath, "group_images");
       imageUrl = imgUpload.secure_url;
     }
 
-    if (audio) {
-      const audioUpload = await cloudinary.uploader.upload(audio, {
-        folder: "group_audio",
-        resource_type: "auto",
-      });
+    if (req.files?.audio) {
+      const audioUpload = await uploadToCloudinary(req.files.audio.tempFilePath, "group_audio", "raw");
       audioUrl = audioUpload.secure_url;
     }
 
