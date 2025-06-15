@@ -168,7 +168,7 @@ const GroupChatContainer = () => {
     >
       <source
         src={msg.content.audio}
-        type="audio/webm"
+        type="video/webm"
       />
       Your browser does not support the audio element.
     </audio>
