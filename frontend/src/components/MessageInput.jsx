@@ -1,8 +1,14 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
-import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
+import {
+  Image,
+  Send,
+  X,
+  Mic,
+  StopCircle,
+  MessageCircle,
+} from "lucide-react";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -16,8 +22,8 @@ const MessageInput = () => {
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
 
-  const selectedUser = useChatStore((state) => state.selectedUser);
-  const sendMessage = useChatStore((state) => state.sendMessage);
+  const selectedUser = useChatStore((s) => s.selectedUser);
+  const sendMessage = useChatStore((s) => s.sendMessage);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -26,8 +32,9 @@ const MessageInput = () => {
       toast.error("Please select an image file");
       return;
     }
+
     const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result);
+    reader.onloadend = () => setImagePreview(reader.result); // base64 string
     reader.readAsDataURL(file);
   };
 
@@ -69,7 +76,8 @@ const MessageInput = () => {
   };
 
   const toggleSpeechRecognition = () => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
       toast.error("Speech recognition not supported");
       return;
     }
@@ -78,7 +86,6 @@ const MessageInput = () => {
       recognitionRef.current.stop();
       setIsRecognizing(false);
     } else {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
@@ -114,7 +121,7 @@ const MessageInput = () => {
   const blobToDataURL = (blob) =>
     new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
+      reader.onloadend = () => resolve(reader.result); // base64 string
       reader.readAsDataURL(blob);
     });
 
@@ -124,6 +131,7 @@ const MessageInput = () => {
       toast.error("No user selected");
       return;
     }
+
     if (!text.trim() && !imagePreview && !audioBlob) return;
 
     let audioDataUrl = null;
@@ -150,6 +158,7 @@ const MessageInput = () => {
 
   return (
     <div className="p-4 w-full">
+      {/* Preview image */}
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
@@ -168,6 +177,7 @@ const MessageInput = () => {
         </div>
       )}
 
+      {/* Preview audio */}
       {audioBlob && (
         <div className="mb-3 flex items-center gap-2">
           <audio controls src={URL.createObjectURL(audioBlob)} />
@@ -177,6 +187,7 @@ const MessageInput = () => {
         </div>
       )}
 
+      {/* Message form */}
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex gap-2">
           <input
@@ -206,6 +217,7 @@ const MessageInput = () => {
           </button>
         </div>
 
+        {/* Voice-to-text button */}
         <button
           type="button"
           className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
@@ -216,6 +228,7 @@ const MessageInput = () => {
           <MessageCircle size={24} />
         </button>
 
+        {/* Audio recording button */}
         <button
           type="button"
           className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
@@ -226,6 +239,7 @@ const MessageInput = () => {
           {isRecordingAudio ? <StopCircle size={24} /> : <Mic size={24} />}
         </button>
 
+        {/* Send button */}
         <button
           type="submit"
           className="btn btn-sm btn-circle"
@@ -240,4 +254,3 @@ const MessageInput = () => {
 };
 
 export default MessageInput;
-
