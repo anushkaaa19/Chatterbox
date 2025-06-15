@@ -11,7 +11,7 @@ router.post("/like/:id", protectRoute, toggleLike);
 // Get users for sidebar (excluding current user)
 router.get("/users", protectRoute, getUsersForSidebar);
 router.get("/:id",protectRoute,getMessages);
-router.post("/send/:id",protectRoute,sendMessages);
+router.post("/:id",protectRoute,sendMessages);
 
 // Additional message routes can be added here:
 // router.post("/send", protectRoute, sendMessage);
