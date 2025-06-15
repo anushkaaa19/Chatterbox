@@ -51,42 +51,53 @@ export const getUserGroups = async (req, res) => {
   }
 };
 
-// ✅ Send a group message
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { text } = req.body;
+    console.log("➡️ Incoming group message request");
+
+    const { text = "" } = req.body;
     const { groupId } = req.params;
     const senderId = req.user._id;
 
-    const group = await Group.findById(groupId);
-    if (!group) {
-      return res.status(404).json({ success: false, message: "Group not found" });
-    }
+    console.log("📦 Received text:", text);
+    console.log("📦 Files received:", req.files);
 
-    let imageUrl = null;
-    let audioUrl = null;
+    let imageUrl = "";
+    let audioUrl = "";
 
-    if (req.files?.image) {
+    if (req.files?.image && req.files.image.tempFilePath) {
+      console.log("📤 Uploading image...");
       const imgUpload = await uploadToCloudinary(req.files.image.tempFilePath, "group_images");
-      imageUrl = imgUpload.secure_url;
+      imageUrl = imgUpload?.secure_url || "";
+      console.log("✅ Image uploaded:", imageUrl);
     }
 
-    if (req.files?.audio) {
+    if (req.files?.audio && req.files.audio.tempFilePath) {
+      console.log("📤 Uploading audio...");
       const audioUpload = await uploadToCloudinary(req.files.audio.tempFilePath, "group_audio", "raw");
-      audioUrl = audioUpload.secure_url;
+      audioUrl = audioUpload?.secure_url || "";
+      console.log("✅ Audio uploaded:", audioUrl);
+    }
+
+    if (!text.trim() && !imageUrl && !audioUrl) {
+      console.log("❌ Empty message submitted, rejecting.");
+      return res.status(400).json({ success: false, message: "Cannot send empty message" });
     }
 
     const newMessage = await GroupMessage.create({
       group: groupId,
       sender: senderId,
       content: {
-        text,
+        text: text.trim(),
         image: imageUrl,
         audio: audioUrl,
       },
     });
 
     await newMessage.populate("sender", "fullName profilePic _id");
+
+    console.log("📤 Emitting message to group via socket:", groupId);
+    console.log("📨 Message Content:", newMessage);
 
     io.to(groupId).emit("receiveGroupMessage", {
       groupId,
@@ -95,10 +106,11 @@ export const sendGroupMessage = async (req, res) => {
 
     res.status(201).json({ success: true, message: newMessage });
   } catch (err) {
-    console.error("Error sending group message:", err);
+    console.error("💥 Error sending group message:", err);
     res.status(500).json({ success: false, message: "Failed to send message" });
   }
 };
+
 
 // ✅ Update group (name and/or profile pic)
 export const updateGroup = async (req, res) => {
