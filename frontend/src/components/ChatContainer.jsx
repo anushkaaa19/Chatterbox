@@ -8,10 +8,10 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
-  const [newText, setNewText] = useState(oldText);
+  const [newText, setNewText] = useState(oldText || "");
 
   useEffect(() => {
-    setNewText(oldText);
+    setNewText(oldText || "");
   }, [oldText]);
 
   if (!isOpen) return null;
@@ -21,7 +21,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
       <div className="bg-base-100 p-6 rounded-xl shadow-lg w-full max-w-md">
         <h3 className="text-lg font-bold mb-2">Edit Message</h3>
         <textarea
-          className="textarea textarea-bordered w-full h-24"
+          className="textarea textarea-bordered w-full h-24 resize-none"
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
         />
@@ -31,7 +31,7 @@ const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
           </button>
           <button
             className="btn btn-sm btn-primary"
-            onClick={() => onSave(newText)}
+            onClick={() => onSave(newText.trim())}
             disabled={!newText.trim()}
           >
             Save
@@ -56,7 +56,8 @@ const MediaRenderer = ({ content }) => {
             className="max-w-full max-h-64 rounded-lg border object-contain"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.parentNode.innerHTML = '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
+              e.target.parentNode.innerHTML =
+                '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500">Image failed to load</div>';
             }}
           />
         </div>
@@ -82,9 +83,7 @@ const MediaRenderer = ({ content }) => {
           rel="noopener noreferrer"
         >
           <span className="text-2xl">📎</span>
-          <span className="truncate flex-1">
-            {content.fileName || "Download file"}
-          </span>
+          <span className="truncate flex-1">{content.fileName || "Download file"}</span>
           <span className="text-xs opacity-75">Click to download</span>
         </a>
       )}
@@ -109,83 +108,82 @@ const ChatContainer = () => {
 
   const messageEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingOldText, setEditingOldText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // Check scroll position
+  // Scroll position check handler
   const checkScrollPosition = () => {
     if (!messagesContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
     setIsAtBottom(scrollHeight - scrollTop - clientHeight < 50);
   };
 
-  // Scroll to bottom if user was already there
+  // Scroll to bottom when messages change and user is at bottom
   useEffect(() => {
     if (isAtBottom && messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isAtBottom]);
 
-  // Initialize scroll position check
+  // Attach scroll event listener once
   useEffect(() => {
     const container = messagesContainerRef.current;
-    if (container) {
-      container.addEventListener("scroll", checkScrollPosition);
-      return () => container.removeEventListener("scroll", checkScrollPosition);
-    }
+    if (!container) return;
+    container.addEventListener("scroll", checkScrollPosition);
+    return () => container.removeEventListener("scroll", checkScrollPosition);
   }, []);
 
-  // Check auth status
+  // Check auth status on load or when isCheckingAuth changes
   useEffect(() => {
-    if (isCheckingAuth) checkAuth();
-  }, [isCheckingAuth]);
+    if (isCheckingAuth) {
+      checkAuth();
+    }
+  }, [isCheckingAuth, checkAuth]);
 
-  // Fetch messages when user changes
+  // Fetch messages & subscribe to typing events on selectedUser change
   useEffect(() => {
     if (!selectedUser?._id) return;
+
     getMessages(selectedUser._id);
     subscribeToTypingEvents();
 
     return () => {
       unsubscribeFromTypingEvents();
     };
-  }, [selectedUser?._id]);
+  }, [selectedUser?._id, getMessages, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
 
-  // Setup socket listener for real-time messages
+  // Setup socket listener for incoming messages
   useEffect(() => {
     if (!socket || !selectedUser?._id || !authUser?._id) return;
-    
-    const messageHandler = (data) => {
+
+    const handleIncomingMessage = (data) => {
       const message = data.message || data;
       if (!message) return;
-      
-      // Normalize IDs
+
       const senderId = message.sender?._id || message.sender;
       const receiverId = message.receiver?._id || message.receiver;
-      
-      // Check if message belongs to current conversation
-      const isRelevantMessage = 
+
+      const isRelevant =
         (senderId === authUser._id && receiverId === selectedUser._id) ||
         (receiverId === authUser._id && senderId === selectedUser._id);
-      
-      if (isRelevantMessage) {
+
+      if (isRelevant) {
         addMessage(message);
       }
     };
 
-    // Setup listeners for both formats
-    socket.on("newMessage", messageHandler);
-    socket.on("message", messageHandler);
+    socket.on("newMessage", handleIncomingMessage);
+    socket.on("message", handleIncomingMessage);
 
-    // Cleanup
     return () => {
-      socket.off("newMessage", messageHandler);
-      socket.off("message", messageHandler);
+      socket.off("newMessage", handleIncomingMessage);
+      socket.off("message", handleIncomingMessage);
     };
-  }, [socket, selectedUser?._id, authUser?._id]);
+  }, [socket, selectedUser?._id, authUser?._id, addMessage]);
 
   const isOwnMessage = (sender) => {
     const senderId = sender?._id || sender;
@@ -205,8 +203,11 @@ const ChatContainer = () => {
     setIsEditing(false);
   };
 
-  const handleLike = (id) => toggleLike(id);
+  const handleLike = (id) => {
+    toggleLike(id);
+  };
 
+  // Filter messages based on search term (search in text or fileName)
   const filteredMessages = messages.filter((msg) => {
     const content = msg.content || {};
     return (
@@ -229,16 +230,19 @@ const ChatContainer = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full input input-bordered input-sm"
+          spellCheck={false}
+          autoComplete="off"
         />
       </div>
 
       {isMessagesLoading ? (
         <MessageSkeleton />
       ) : (
-        <div 
+        <div
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto p-4 space-y-4"
           onScroll={checkScrollPosition}
+          style={{ scrollbarWidth: "thin" }}
         >
           {(searchTerm ? filteredMessages : messages).map((message) => {
             const own = isOwnMessage(message.sender);
@@ -248,8 +252,8 @@ const ChatContainer = () => {
             if (!hasContent) return null;
 
             const likedBy = Array.isArray(message.likedBy) ? message.likedBy : [];
-            const likedByCurrentUser = likedBy.some(id => 
-              id?.toString() === authUser._id.toString()
+            const likedByCurrentUser = likedBy.some(
+              (id) => id?.toString() === authUser._id.toString()
             );
 
             return (
@@ -274,18 +278,14 @@ const ChatContainer = () => {
                   </div>
                 </div>
 
-                <div className="chat-header text-xs mb-1 opacity-70">
+                <div className="chat-header text-xs mb-1 opacity-70 select-none">
                   {formatMessageTime(message.createdAt || message.timestamp)}
-                  {message.edited && (
-                    <span className="text-xs italic ml-1">(edited)</span>
-                  )}
+                  {message.edited && <span className="text-xs italic ml-1">(edited)</span>}
                 </div>
 
                 <div
                   className={`chat-bubble max-w-xs break-words p-3 relative ${
-                    own
-                      ? "bg-primary text-primary-content"
-                      : "bg-base-200 text-base-content"
+                    own ? "bg-primary text-primary-content" : "bg-base-200 text-base-content"
                   }`}
                 >
                   {/* Message options */}
@@ -294,13 +294,12 @@ const ChatContainer = () => {
                       isOwnMessage={own}
                       onEdit={() => handleEdit(message._id, content.text)}
                       onLike={() => handleLike(message._id)}
+                      liked={likedByCurrentUser}
                     />
                   </div>
 
                   {/* Text content */}
-                  {content.text && (
-                    <p className="whitespace-pre-line">{content.text}</p>
-                  )}
+                  {content.text && <p className="whitespace-pre-line">{content.text}</p>}
 
                   {/* Media content */}
                   <MediaRenderer content={content} />
@@ -313,6 +312,7 @@ const ChatContainer = () => {
                         className={`flex items-center gap-1 ${
                           likedByCurrentUser ? "text-red-500" : "text-gray-500"
                         }`}
+                        aria-label={likedByCurrentUser ? "Unlike message" : "Like message"}
                       >
                         <span>❤️</span>
                         <span className="text-xs">{likedBy.length}</span>
