@@ -77,8 +77,7 @@ export const sendGroupMessage = async (req, res) => {
 
     if (audio) {
       const audioUpload = await cloudinary.uploader.upload(audio, {
-        folder: "group_audio",
-        resource_type: "auto",
+        resource_type: "video", folder: "group_audio" ,
       });
       audioUrl = audioUpload.secure_url;
     }
