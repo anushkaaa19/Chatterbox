@@ -42,7 +42,6 @@ const GroupChatContainer = () => {
 
   useEffect(() => {
     if (!selectedGroup?._id) return;
-
     subscribeToGroupMessages(selectedGroup._id);
     return () => unsubscribeFromGroupMessages();
   }, [selectedGroup?._id]);
@@ -51,9 +50,8 @@ const GroupChatContainer = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [groupMessages]);
 
-  const isOwnMessage = (senderId) => {
-    return senderId?.toString() === currentUser?._id?.toString();
-  };
+  const isOwnMessage = (senderId) =>
+    senderId?.toString() === currentUser?._id?.toString();
 
   const handleSendMessage = async (messageData) => {
     if (!selectedGroup?._id) return;
@@ -107,10 +105,6 @@ const GroupChatContainer = () => {
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((msg) => {
             const isOwn = isOwnMessage(msg.sender?._id);
-
-            console.log("Rendering message:", msg);
-
-
             return (
               <div
                 key={msg._id}
@@ -148,7 +142,10 @@ const GroupChatContainer = () => {
                           : "bg-base-200 text-base-content"
                       }`}
                     >
+                      {/* Text Message */}
                       {msg.content?.text && <p>{msg.content.text}</p>}
+
+                      {/* Image Message */}
                       {msg.content?.image && (
                         <img
                           src={msg.content.image}
@@ -156,28 +153,25 @@ const GroupChatContainer = () => {
                           className="mt-1 rounded-md max-w-xs max-h-48 object-cover"
                         />
                       )}
+
+                      {/* Audio Message */}
                       {msg.content?.audio && (
-  <div className="mt-1 w-full max-w-xs">
-    <audio
-      controls
-      preload="metadata"
-      className="w-full rounded-md border border-base-300"
-      onError={(e) =>
-        console.error("Audio error on message", msg._id, e)
-      }
-    >
-      <source
-        src={msg.content.audio}
-        type="video/webm"
-      />
-      Your browser does not support the audio element.
-    </audio>
-  </div>
-)}
-
-
-                      
+                        <div className="mt-2 w-full max-w-xs">
+                          <audio
+                            controls
+                            preload="metadata"
+                            className="w-full rounded border border-base-300"
+                            onError={(e) =>
+                              console.error("Audio load error", msg._id, e)
+                            }
+                          >
+                            <source src={msg.content.audio} />
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
+                      )}
                     </div>
+
                     <div className="text-[10px] text-base-content opacity-50 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
