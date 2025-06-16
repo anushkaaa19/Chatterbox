@@ -7,7 +7,7 @@ ChatterBox is a powerful and modern real-time chat application built using the *
 ## 🚀 Live Demo
 
 * 🔗 **Live App**: [https://chatterbox-frontend-uppi.onrender.com](https://chatterbox-frontend-uppi.onrender.com)
-* 🎥 **Demo Video**: Paste your Loom or YouTube video link here.
+* 🎥 **Demo Video**: [https://www.loom.com/share/62914be9bb7d4fb5b2adb80b8b3a2065?sid=f2691aea-abd1-4d3a-8c6f-0bca4198f01f](https://www.loom.com/share/62914be9bb7d4fb5b2adb80b8b3a2065?sid=f2691aea-abd1-4d3a-8c6f-0bca4198f01f)
 
 ---
 
@@ -214,6 +214,6 @@ VITE_API_BASE_URL=http://localhost:5000/api
 **Anushka Srivastava**
 📧 Email: [your.email@example.com](mailto:your.email@example.com)
 🔗 LinkedIn: [linkedin.com/in/yourprofile](https://www.linkedin.com/in/yourprofile)
-🎥 Loom: [Demo Link](https://loom.com/share/your-video-id)
+🎥 Loom: [Demo Link](https://www.loom.com/share/62914be9bb7d4fb5b2adb80b8b3a2065?sid=f2691aea-abd1-4d3a-8c6f-0bca4198f01f)
 
 ---
