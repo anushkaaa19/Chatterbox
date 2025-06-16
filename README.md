@@ -211,7 +211,7 @@ VITE_API_BASE_URL=http://localhost:5000/api
 
 ## 🧑‍💻 Author
 
-**Anushka Sharma (aka uppi)**
+**Anushka Srivastava**
 📧 Email: [your.email@example.com](mailto:your.email@example.com)
 🔗 LinkedIn: [linkedin.com/in/yourprofile](https://www.linkedin.com/in/yourprofile)
 🎥 Loom: [Demo Link](https://loom.com/share/your-video-id)
