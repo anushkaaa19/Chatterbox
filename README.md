@@ -7,67 +7,9 @@ ChatterBox is a powerful and modern real-time chat application built using the *
 ## 🚀 Live Demo
 
 * 🔗 **Live App**: [https://chatterbox-frontend-uppi.onrender.com](https://chatterbox-frontend-uppi.onrender.com)
-* 🎥 **Demo Video**: [https://www.loom.com/share/62914be9bb7d4fb5b2adb80b8b3a2065?sid=f2691aea-abd1-4d3a-8c6f-0bca4198f01f](https://www.loom.com/share/62914be9bb7d4fb5b2adb80b8b3a2065?sid=f2691aea-abd1-4d3a-8c6f-0bca4198f01f)
+* 🎥 **Demo Video**: [https://www.loom.com/share/e300fc8a8ac143c4aa25b6d43f71e271?sid=2e3b7898-aeee-49f2-b247-d724d936abdb](https://www.loom.com/share/e300fc8a8ac143c4aa25b6d43f71e271?sid=2e3b7898-aeee-49f2-b247-d724d936abdb)
 
 ---
-
-## 📈 Features
-
-### 🔐 Authentication
-
-* Signup/Login with Email + Password
-* Google OAuth
-* OTP Verification Flow
-* JWT (Access & Refresh Token) with secure cookie storage
-
-### 💬 Messaging
-
-* One-to-one and group chats
-* Real-time messaging with Socket.IO
-* Typing indicators
-* Message editing, deleting, liking
-* Seen/read receipts
-
-### 📎 File Support
-
-* Send & receive images, voice messages, PDFs
-* Cloudinary integration for uploads (images, audio, raw)
-* Voice-to-text (basic)
-
-### 👥 Group Features
-
-* Create/delete groups
-* Set group avatar and name
-* Add/remove members
-* Leave group
-* Admin-only controls
-
-### 🎨 UI/UX
-
-* Clean, modern interface using Tailwind CSS + DaisyUI
-* Responsive for mobile & desktop
-* Elegant animations, modals, and menus
-
----
-
-## 🔧 Tech Stack
-
-| Area        | Tech                                  |
-| ----------- | ------------------------------------- |
-| Frontend    | React, Zustand, Tailwind CSS, DaisyUI |
-| Backend     | Node.js, Express, MongoDB (Mongoose)  |
-| Real-Time   | Socket.IO                             |
-| Auth        | JWT, Google OAuth, bcrypt, nodemailer |
-| File Upload | Cloudinary                            |
-| Deployment  | Render (Frontend + Backe# 🗨️ ChatterBox - Real-time Chat Application
-
-**ChatterBox** is a feature-rich, modern real-time chat application built for both 1-to-1 and group conversations. Whether you're chatting with a friend, sharing files in a group, or collaborating in real-time, ChatterBox makes it smooth, secure, and scalable.
-
-> 🔴 **Live Demo**: [https://chatterbox-frontend-uppi.onrender.com](https://chatterbox-frontend-uppi.onrender.com)
-> 🎥 **Video Walkthrough (Loom)**: *\[Insert Loom link here]*
-
----
-
 ## 🌟 Features
 
 ### 💬 Chat Functionalities
@@ -75,7 +17,7 @@ ChatterBox is a powerful and modern real-time chat application built using the *
 * **One-to-One Messaging**: Real-time direct messaging between users.
 * **Group Messaging**: Create and manage group chats with avatars and multiple participants.
 * **Typing Indicators**: See when someone is typing in real-time.
-* **Message Status**: Real-time delivery and receipt acknowledgment.
+* **Online/Offline Status**: Real-time delivery and receipt acknowledgment.
 
 ### ✏️ Message Content Types
 
@@ -83,14 +25,17 @@ ChatterBox is a powerful and modern real-time chat application built using the *
 * **Image Upload**: Share pictures, memes, or screenshots directly in chat.
 * **Audio Messages**: Record and send voice notes.
 * **Voice to Text**: Convert voice recordings into transcribed messages.
-* **PDF Upload & Download**: Share documents like PDFs with download links.
 
 ### 🔄 Message Actions
 
 * **Edit Messages**: Modify sent messages with instant updates to all clients.
 * **Like/Unlike Messages**: React to messages with likes.
-* **Delete Messages** (if enabled): Remove messages from the conversation.
 
+### 🧑‍🤝‍🧑 Profile Features
+
+* **Profile Photo Upload**: Update Profile Photo
+* **About(Bio)**: Add a bio or about.
+  
 ### 🧑‍🤝‍🧑 Group Features
 
 * **Group Creation**: Easily create new groups.
@@ -104,7 +49,6 @@ ChatterBox is a powerful and modern real-time chat application built using the *
 * **Google OAuth**: Seamless Google Sign-In.
 * **OTP Verification**: Secure signup and password reset.
 * **JWT Tokens**: Access and Refresh tokens for secure sessions.
-* **httpOnly Cookies**: Prevent token theft via XSS.
 
 ### ⚡ Real-Time Engine
 
@@ -212,8 +156,8 @@ VITE_API_BASE_URL=http://localhost:5000/api
 ## 🧑‍💻 Author
 
 **Anushka Srivastava**
-📧 Email: [your.email@example.com](mailto:your.email@example.com)
-🔗 LinkedIn: [linkedin.com/in/yourprofile](https://www.linkedin.com/in/yourprofile)
-🎥 Loom: [Demo Link](https://www.loom.com/share/62914be9bb7d4fb5b2adb80b8b3a2065?sid=f2691aea-abd1-4d3a-8c6f-0bca4198f01f)
+📧 Email: [Anushka Srivastava](anushka.19252406@gmail.com)
+🔗 LinkedIn: [Anushka Srivastava](https://www.linkedin.com/in/anushka-srivastava-a2030b287/)
+🎥 Loom: [Demo Link](https://www.loom.com/share/e300fc8a8ac143c4aa25b6d43f71e271?sid=4b6ddedd-7742-4c1d-86ac-9d773a619d98)
 
 ---
