@@ -44,6 +44,10 @@ export const editMessage = async (req, res) => {
     message.text = newText;
     message.edited = true;
     await message.save();
+    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+if (receiverSocketId) {
+  io.to(receiverSocketId).emit("messageUpdated", message);
+}
 
     res.status(200).json({ success: true, message });
   } catch (err) {
@@ -70,6 +74,11 @@ export const toggleLike = async (req, res) => {
     }
 
     await message.save();
+    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+if (receiverSocketId) {
+  io.to(receiverSocketId).emit("messageUpdated", message);
+}
+
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
