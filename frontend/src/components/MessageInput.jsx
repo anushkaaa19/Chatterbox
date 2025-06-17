@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
-import { useChatStore } from "../store/useChatStore";
-import { useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Image, Send, X, Mic, StopCircle, MessageCircle } from "lucide-react";
+import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
 
@@ -17,25 +16,21 @@ const MessageInput = () => {
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
 
-  const { sendMessage } = useChatStore();
+  const { sendMessage, selectedUser } = useChatStore();
+  const { socket, authUser } = useAuthStore();
 
-  // -------- Image Handling --------
-  const socket = useAuthStore((state) => state.socket);
-  const authUser = useAuthStore((state) => state.authUser);
-  const selectedUser = useChatStore((state) => state.selectedUser);
-
-
+  // -------- Typing Indicator --------
   useEffect(() => {
     if (!socket || !authUser || !selectedUser) return;
-  
+
     let typingTimeout;
-  
+
     if (text.trim()) {
       socket.emit("typing", {
         fromUserId: authUser._id,
         toUserId: selectedUser._id,
       });
-  
+
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
         socket.emit("stopTyping", {
@@ -49,12 +44,14 @@ const MessageInput = () => {
         toUserId: selectedUser._id,
       });
     }
-  
+
     return () => clearTimeout(typingTimeout);
   }, [text, socket, authUser, selectedUser]);
+
+  // -------- Image Handling --------
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return; // No file selected
+    if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
@@ -87,7 +84,7 @@ const MessageInput = () => {
         mediaRecorderRef.current.onstop = () => {
           const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
           setAudioBlob(blob);
-          stream.getTracks().forEach((track) => track.stop()); // Stop mic stream after recording
+          stream.getTracks().forEach((track) => track.stop());
         };
 
         mediaRecorderRef.current.start();
@@ -102,7 +99,34 @@ const MessageInput = () => {
     setAudioBlob(null);
   };
 
-  // -------- Voice-to-text (Speech Recognition) --------
+  // -------- Transcribe Audio --------
+  const transcribeAudio = async () => {
+    if (!audioBlob) return;
+
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "voice.webm");
+
+    try {
+      const res = await fetch("http://localhost:5000/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.text) {
+        setText((prev) => prev + " " + data.text);
+        toast.success("Voice converted to text!");
+      } else {
+        toast.error("Transcription failed");
+      }
+    } catch (err) {
+      toast.error("Failed to transcribe audio");
+      console.error("Transcription error:", err);
+    }
+  };
+
+  // -------- Speech Recognition (Browser only) --------
   const toggleSpeechRecognition = () => {
     if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
       toast.error("Speech recognition not supported in this browser");
@@ -148,7 +172,6 @@ const MessageInput = () => {
     }
   };
 
-  // Helper to convert blob to base64 string
   const blobToDataURL = (blob) =>
     new Promise((resolve) => {
       const reader = new FileReader();
@@ -156,7 +179,6 @@ const MessageInput = () => {
       reader.readAsDataURL(blob);
     });
 
-  // -------- Send Message --------
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !audioBlob) return;
@@ -173,14 +195,13 @@ const MessageInput = () => {
         audio: audioDataUrl,
       });
 
-      // Reset all inputs after sending
       setText("");
       setImagePreview(null);
       setAudioBlob(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
-      console.error("Failed to send message:", error);
       toast.error("Failed to send message");
+      console.error("Send error:", error);
     }
   };
 
@@ -207,21 +228,30 @@ const MessageInput = () => {
         </div>
       )}
 
-      {/* Audio playback */}
+      {/* Audio preview and Transcribe */}
       {audioBlob && (
         <div className="mb-3 flex items-center gap-2">
           <audio controls src={URL.createObjectURL(audioBlob)} />
           <button
             onClick={removeAudio}
-            className="btn btn-sm btn-circle ml-2"
+            className="btn btn-sm btn-circle"
             type="button"
             aria-label="Remove audio"
           >
             <X size={16} />
           </button>
+          <button
+            onClick={transcribeAudio}
+            className="btn btn-sm"
+            type="button"
+            title="Convert audio to text"
+          >
+            🎤→📝
+          </button>
         </div>
       )}
 
+      {/* Message Input */}
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex gap-2">
           <input
@@ -232,7 +262,6 @@ const MessageInput = () => {
             onChange={(e) => setText(e.target.value)}
             disabled={isRecordingAudio}
           />
-
           <input
             type="file"
             accept="image/*"
@@ -241,7 +270,6 @@ const MessageInput = () => {
             onChange={handleImageChange}
             disabled={isRecordingAudio}
           />
-
           <button
             type="button"
             className={`btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
@@ -253,31 +281,26 @@ const MessageInput = () => {
           </button>
         </div>
 
-        {/* Voice to Text button */}
         <button
           type="button"
           className={`btn btn-circle ${isRecognizing ? "text-blue-600" : "text-zinc-400"}`}
           onClick={toggleSpeechRecognition}
           title={isRecognizing ? "Stop Voice to Text" : "Start Voice to Text"}
           disabled={isRecordingAudio}
-          aria-pressed={isRecognizing}
         >
           <MessageCircle size={24} />
         </button>
 
-        {/* Audio Record button */}
         <button
           type="button"
           className={`btn btn-circle ${isRecordingAudio ? "text-red-500" : "text-zinc-400"}`}
           onClick={toggleAudioRecording}
           title={isRecordingAudio ? "Stop Recording" : "Record Audio"}
           disabled={isRecognizing}
-          aria-pressed={isRecordingAudio}
         >
           {isRecordingAudio ? <StopCircle size={24} /> : <Mic size={24} />}
         </button>
 
-        {/* Send button */}
         <button
           type="submit"
           className="btn btn-sm btn-circle"

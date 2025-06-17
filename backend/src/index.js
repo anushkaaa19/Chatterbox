@@ -107,6 +107,8 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use("/api/transcribe", transcribeRoute);
+
 
 
 // Connect to DB and then start the server
