@@ -2,6 +2,8 @@
 import express from "express";
 import multer from "multer";
 import { OpenAI } from "openai";
+import dotenv from "dotenv";         // ✅ Add this
+dotenv.config();                     // ✅ Load .env file
 
 const router = express.Router();
 const upload = multer(); // parse multipart/form-data

@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { connectDB } from "./lib/db.js";
 
+import transcribeRoute from "./routes/transribe.js"
 import {app,server} from "./lib/socket.js"
 import fileUpload from "express-fileupload";
 let authRoutes, messageRoutes, groupRoutes;
