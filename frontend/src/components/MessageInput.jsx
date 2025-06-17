@@ -107,7 +107,7 @@ const MessageInput = () => {
     formData.append("audio", audioBlob, "voice.webm");
 
     try {
-      const res = await fetch("http://localhost:5000/api/transcribe", {
+      const res = await fetch("https://chatterbox-backend-rus5.onrender.com/api/transcribe", {
         method: "POST",
         body: formData,
       });
