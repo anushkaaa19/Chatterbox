@@ -25,7 +25,6 @@ export const getUsersForSidebar = async (req, res) => {
   }
 };
 
-// ✅ Edit a message
 export const editMessage = async (req, res) => {
   const { id } = req.params;
   const { newText } = req.body;
@@ -33,9 +32,7 @@ export const editMessage = async (req, res) => {
 
   try {
     const message = await Message.findById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message not found" });
-    }
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
     if (message.senderId.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
@@ -44,10 +41,11 @@ export const editMessage = async (req, res) => {
     message.text = newText;
     message.edited = true;
     await message.save();
+
     const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-if (receiverSocketId) {
-  io.to(receiverSocketId).emit("messageUpdated", message);
-}
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageEdited", { message });
+    }
 
     res.status(200).json({ success: true, message });
   } catch (err) {
@@ -62,9 +60,7 @@ export const toggleLike = async (req, res) => {
 
   try {
     const message = await Message.findById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, message: "Message not found" });
-    }
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
     const index = message.likes.indexOf(userId);
     if (index === -1) {
@@ -74,16 +70,18 @@ export const toggleLike = async (req, res) => {
     }
 
     await message.save();
+
     const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-if (receiverSocketId) {
-  io.to(receiverSocketId).emit("messageUpdated", message);
-}
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageLiked", { message });
+    }
 
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ✅ Get messages between two users
 export const getMessages = async (req, res) => {

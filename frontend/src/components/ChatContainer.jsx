@@ -89,7 +89,26 @@ const ChatContainer = () => {
       unsubscribeFromTypingEvents();
     };
   }, [selectedUser?._id, socket]);
-
+  useEffect(() => {
+    if (!socket) return;
+  
+    const handleEdit = ({ message }) => {
+      useChatStore.getState().updateMessage(message); // Update message in state
+    };
+  
+    const handleLike = ({ message }) => {
+      useChatStore.getState().updateMessage(message); // Same handler
+    };
+  
+    socket.on("messageEdited", handleEdit);
+    socket.on("messageLiked", handleLike);
+  
+    return () => {
+      socket.off("messageEdited", handleEdit);
+      socket.off("messageLiked", handleLike);
+    };
+  }, [socket]);
+  
   useEffect(() => {
     if (messageEndRef.current && messages.length) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
