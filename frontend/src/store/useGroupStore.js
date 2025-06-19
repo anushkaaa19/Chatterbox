@@ -4,6 +4,8 @@ import { toast } from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
 // Global handler reference
+let groupUpdateHandler = null;
+
 let groupMessageHandler = null;
 
 export const useGroupStore = create((set, get) => ({
@@ -12,11 +14,40 @@ export const useGroupStore = create((set, get) => ({
   groupMessages: [],
   isGroupLoading: false,
   socket: null,
-
+  subscribeToGroupEvents: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+  
+    // Remove previous listener if exists
+    if (groupUpdateHandler) socket.off("groupUpdated", groupUpdateHandler);
+  
+    groupUpdateHandler = ({ group }) => {
+      set((state) => {
+        const updatedGroups = state.groups.map((g) =>
+          g._id === group._id ? group : g
+        );
+        return {
+          groups: updatedGroups,
+          selectedGroup: state.selectedGroup?._id === group._id ? group : state.selectedGroup,
+        };
+      });
+    };
+  
+    socket.on("groupUpdated", groupUpdateHandler);
+  },
+  
+  unsubscribeFromGroupEvents: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket && groupUpdateHandler) {
+      socket.off("groupUpdated", groupUpdateHandler);
+      groupUpdateHandler = null;
+    }
+  },
   setSocket: (socket) => set({ socket }),
 
   setSelectedGroup: (group) => {
     const authSocket = useAuthStore.getState().socket;
+
     const { selectedGroup } = get();
 
     if (authSocket && selectedGroup?._id) {

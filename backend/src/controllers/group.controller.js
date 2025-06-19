@@ -162,6 +162,8 @@ export const deleteGroup = async (req, res) => {
 };
 
 // ✅ Leave group
+// ✅ Leave group
+// ✅ Leave group
 export const leaveGroup = async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -170,15 +172,24 @@ export const leaveGroup = async (req, res) => {
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ success: false, message: "Group not found" });
 
+    // Remove user
     group.members = group.members.filter((id) => id.toString() !== userId.toString());
-
     await group.save();
+
+    // ✅ Broadcast updated group to all remaining members
+    const updatedGroup = await Group.findById(groupId)
+      .populate("members", "fullName email profilePic")
+      .populate("admin", "fullName email profilePic");
+
+    io.to(groupId).emit("groupUpdated", { group: updatedGroup });
+
     res.status(200).json({ success: true, message: "Left the group" });
   } catch (err) {
     console.error("Leave group error:", err);
     res.status(500).json({ success: false, message: "Failed to leave group" });
   }
 };
+
 
 // ✅ Get all group messages
 export const getGroupMessages = async (req, res) => {

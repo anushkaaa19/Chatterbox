@@ -2,6 +2,7 @@ import HeroSection from "../components/homepage/HeroSection"
 import FeaturesSection from "../components/homepage/FeaturesSection"
 import GetStartedSection from "../components/homepage/GetStarted"
 import { Separator } from "../components/ui/separator";
+import { Link } from "react-router-dom";
 
 const Home = () => {
   return (
@@ -36,32 +37,24 @@ const Home = () => {
             </div>
 
             <div>
-              <h3 className="text-lg font-bold mb-4 text-primary">Product</h3>
+              <h3 className="text-lg font-bold mb-4 text-primary">About us</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-primary">Features</a></li>
-                <li><a href="#" className="hover:text-primary">Pricing</a></li>
-                <li><a href="#" className="hover:text-primary">Download</a></li>
-                <li><a href="#" className="hover:text-primary">FAQ</a></li>
+                <li><Link to="/demo" className="hover:text-primary underline">
+  Try the Demo
+</Link></li>
+<li><Link to="/learn"className="hover:text-primary">Our Mission</Link></li>
+
+                <li><Link to="/signup" className="hover:text-primary">Signup</Link></li>
+                <li><Link to="/login"className="hover:text-primary">Login</Link></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-lg font-bold mb-4 text-primary">Company</h3>
+              <h3 className="text-lg font-bold mb-4 text-primary">Contact Us</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-primary">About Us</a></li>
-                <li><a href="#" className="hover:text-primary">Careers</a></li>
-                <li><a href="#" className="hover:text-primary">Blog</a></li>
-                <li><a href="#" className="hover:text-primary">Contact</a></li>
-              </ul>
-            </div>
+                <li><p className="hover:text-primary">+91 1234567890</p></li>
+                <li><p className="hover:text-primary">chatterbox@gmail.com</p></li>
 
-            <div>
-              <h3 className="text-lg font-bold mb-4 text-primary">Legal</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="hover:text-primary">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-primary">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-primary">Cookie Policy</a></li>
-                <li><a href="#" className="hover:text-primary">GDPR</a></li>
               </ul>
             </div>
           </div>

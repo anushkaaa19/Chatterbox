@@ -118,26 +118,19 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  toggleLike: (messageId) => {
-    const { authUser } = useAuthStore.getState();
-    if (!authUser || !authUser._id) return;
+  toggleLike: async (messageId) => {
+    try {
+      const res = await axiosInstance.patch(`/messages/${messageId}/like`);
+      const updatedMessage = res.data.message;
   
-    set((state) => ({
-      messages: state.messages.map((msg) => {
-        if (msg._id !== messageId) return msg;
-  
-        const currentLikes = Array.isArray(msg.likes) ? msg.likes : [];
-        const hasLiked = currentLikes.includes(authUser._id);
-  
-        return {
-          ...msg,
-          likes: hasLiked
-            ? currentLikes.filter((uid) => uid !== authUser._id)
-            : [...currentLikes, authUser._id],
-        };
-      }),
-    }));
+      // Update message in store for both sender and receiver
+      get().updateMessage(updatedMessage);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to toggle like");
+    }
   },
+  
+  
   
 
   subscribeToMessages: () => {

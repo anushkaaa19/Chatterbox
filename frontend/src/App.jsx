@@ -11,26 +11,28 @@ import VerifyOtp from "./pages/VerifyOtp";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuthStore } from "./store/useAuthStore";
-import { useThemeStore } from "./store/useThemeStore";
 import { useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 
+import { useAuthStore } from "./store/useAuthStore";
+import { useThemeStore } from "./store/useThemeStore";
+import { useGroupStore } from "./store/useGroupStore";
+
 const App = () => {
+  // ✅ Call all hooks at top-level
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
   const { theme } = useThemeStore();
+  const { subscribeToGroupEvents } = useGroupStore();
 
-  // 🟢 Apply theme to <html> dynamically
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  // Initial auth check
   useEffect(() => {
     const checkAuthState = async () => {
-      if (!document.cookie.includes('jwt')) {
+      if (!document.cookie.includes("jwt")) {
         useAuthStore.setState({ authUser: null, isCheckingAuth: false });
         return;
       }
@@ -43,6 +45,11 @@ const App = () => {
     checkAuth();
   }, [checkAuth]);
 
+  // ✅ Safe: conditional logic AFTER hooks
+  useEffect(() => {
+    subscribeToGroupEvents();
+  }, []);
+
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -54,7 +61,6 @@ const App = () => {
   return (
     <>
       <Navbar />
-
       <Routes>
         <Route path="/" element={authUser ? <HomePage /> : <Home />} />
         <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
@@ -67,7 +73,6 @@ const App = () => {
         <Route path="/password" element={!authUser ? <ForgotPassword /> : <Navigate to="/" />} />
         <Route path="/reset-password" element={!authUser ? <ResetPassword /> : <Navigate to="/" />} />
       </Routes>
-
       <Toaster />
     </>
   );
