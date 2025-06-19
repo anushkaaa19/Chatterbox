@@ -120,7 +120,7 @@ export const useChatStore = create((set, get) => ({
 
   toggleLike: async (messageId) => {
     try {
-      const res = await axiosInstance.patch(`/messages/${messageId}/like`);
+      const res = await axiosInstance.post(`/messages/like/${messageId}`);
       const updatedMessage = res.data.message;
   
       // Update message in store for both sender and receiver
