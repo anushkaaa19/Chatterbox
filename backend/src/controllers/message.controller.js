@@ -60,7 +60,8 @@ export const toggleLike = async (req, res) => {
 
   try {
     const message = await Message.findById(id);
-    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    if (!message)
+      return res.status(404).json({ success: false, message: "Message not found" });
 
     const index = message.likes.indexOf(userId);
     if (index === -1) {
@@ -71,22 +72,22 @@ export const toggleLike = async (req, res) => {
 
     await message.save();
 
+    // 🔥 Broadcast updated message to BOTH users
     const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
     const senderSocketId = getReceiverSocketId(message.senderId.toString());
-    
-    if (receiverSocketId) {
+
+    if (receiverSocketId)
       io.to(receiverSocketId).emit("messageLiked", { message });
-    }
-    if (senderSocketId && senderSocketId !== receiverSocketId) {
+
+    if (senderSocketId && senderSocketId !== receiverSocketId)
       io.to(senderSocketId).emit("messageLiked", { message });
-    }
-    
 
     res.status(200).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 // ✅ Get messages between two users

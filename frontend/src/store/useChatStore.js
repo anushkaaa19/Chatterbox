@@ -101,13 +101,14 @@ export const useChatStore = create((set, get) => ({
       throw err;
     }
   },
-
   updateMessage: (updatedMessage) => {
-    const updated = get().messages.map((msg) =>
-      msg._id === updatedMessage._id ? updatedMessage : msg
-    );
-    set({ messages: updated });
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg._id === updatedMessage._id ? updatedMessage : msg
+      ),
+    }));
   },
+  
 
   editMessage: async (id, newText) => {
     try {

@@ -94,8 +94,10 @@ const ChatContainer = () => {
     if (!socket) return;
 
     const handleEdit = ({ message }) => updateMessage(message);
-    const handleLike = ({ message }) => updateMessage(message);
-
+    const handleLike = ({ message }) => {
+      useChatStore.getState().updateMessage(message);
+    };
+    
     socket.on("messageEdited", handleEdit);
     socket.on("messageLiked", handleLike);
 
