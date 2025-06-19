@@ -170,18 +170,27 @@ export const leaveGroup = async (req, res) => {
     const userId = req.user._id;
 
     const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
 
-    // Remove user
-    group.members = group.members.filter((id) => id.toString() !== userId.toString());
+    // Remove user from group members
+    group.members = group.members.filter(
+      (memberId) => memberId.toString() !== userId.toString()
+    );
+
     await group.save();
 
-    // ✅ Broadcast updated group to all remaining members
+    // ✅ Re-fetch the updated group with fresh populated fields
     const updatedGroup = await Group.findById(groupId)
       .populate("members", "fullName email profilePic")
-      .populate("admin", "fullName email profilePic");
+      .populate("admin", "fullName email profilePic")
+      .lean(); // <-- optional: improves performance and ensures plain object
 
-    io.to(groupId).emit("groupUpdated", { group: updatedGroup });
+    // ✅ Broadcast to all members still in the group
+    if (updatedGroup) {
+      io.to(groupId).emit("groupUpdated", { group: updatedGroup });
+    }
 
     res.status(200).json({ success: true, message: "Left the group" });
   } catch (err) {
@@ -189,6 +198,7 @@ export const leaveGroup = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to leave group" });
   }
 };
+
 
 
 // ✅ Get all group messages

@@ -132,29 +132,39 @@ export const useChatStore = create((set, get) => ({
   
   
   
-
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
-
+  
     const socket = useAuthStore.getState().socket;
-    
-  socket.on("messageUpdated", (updatedMessage) => {
-    set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg._id === updatedMessage._id ? updatedMessage : msg
-      ),
-    }));
-  });
-
+    if (!socket) return;
+  
+    socket.on("messageUpdated", (updatedMessage) => {
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === updatedMessage._id ? updatedMessage : msg
+        ),
+      }));
+    });
+  
     socket.on("newMessage", (newMessage) => {
       if (newMessage.senderId !== selectedUser._id) return;
-
-      set({
-        messages: [...get().messages, newMessage],
-      });
+  
+      set((state) => ({
+        messages: [...state.messages, newMessage],
+      }));
+    });
+  
+    // ✅ Add this to sync likes in real-time
+    socket.on("messageLiked", ({ message }) => {
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === message._id ? message : msg
+        ),
+      }));
     });
   },
+  
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;

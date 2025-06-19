@@ -7,7 +7,6 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-// Edit modal for any message type
 const EditMessageModal = ({ isOpen, oldText, onClose, onSave }) => {
   const [newText, setNewText] = useState(oldText);
 
@@ -56,14 +55,15 @@ const ChatContainer = () => {
     subscribeToTypingEvents,
     unsubscribeFromTypingEvents,
     typingUsers,
+    editMessage,
+    toggleLike,
+    updateMessage,
   } = useChatStore();
 
   const {
     authUser,
     isCheckingAuth,
     socket,
-    setAuthUser,
-    setIsCheckingAuth,
     checkAuth,
   } = useAuthStore();
 
@@ -89,26 +89,22 @@ const ChatContainer = () => {
       unsubscribeFromTypingEvents();
     };
   }, [selectedUser?._id, socket]);
+
   useEffect(() => {
     if (!socket) return;
-  
-    const handleEdit = ({ message }) => {
-      useChatStore.getState().updateMessage(message); // Update message in state
-    };
-  
-    const handleLike = ({ message }) => {
-      useChatStore.getState().updateMessage(message); // Same handler
-    };
-  
+
+    const handleEdit = ({ message }) => updateMessage(message);
+    const handleLike = ({ message }) => updateMessage(message);
+
     socket.on("messageEdited", handleEdit);
     socket.on("messageLiked", handleLike);
-  
+
     return () => {
       socket.off("messageEdited", handleEdit);
       socket.off("messageLiked", handleLike);
     };
   }, [socket]);
-  
+
   useEffect(() => {
     if (messageEndRef.current && messages.length) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -118,11 +114,10 @@ const ChatContainer = () => {
   if (isCheckingAuth) return <div>Loading chat...</div>;
   if (!authUser?._id) return <div>Please log in to use the chat.</div>;
 
-  const isOwnMessage = (senderId) => {
-    if (!senderId) return false;
-    if (typeof senderId === "string") return senderId === authUser._id;
-    return senderId._id === authUser._id;
-  };
+  const isOwnMessage = (senderId) =>
+    typeof senderId === "string"
+      ? senderId === authUser._id
+      : senderId?._id === authUser._id;
 
   const handleEdit = (id, oldText) => {
     setEditingMessageId(id);
@@ -132,13 +127,13 @@ const ChatContainer = () => {
 
   const handleSaveEdit = (newText) => {
     if (newText && newText !== editingOldText) {
-      useChatStore.getState().editMessage(editingMessageId, newText);
+      editMessage(editingMessageId, newText);
     }
     setIsEditing(false);
   };
 
   const handleLike = (id) => {
-    useChatStore.getState().toggleLike(id);
+    toggleLike(id);
   };
 
   const filteredMessages = messages.filter((msg) =>
@@ -149,7 +144,6 @@ const ChatContainer = () => {
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
-      {/* Search bar */}
       <div className="px-4 pt-4">
         <input
           type="text"
@@ -261,14 +255,10 @@ const ChatContainer = () => {
                     </>
                   )}
 
-                  {likedByCurrentUser && (
-                    <button
-                      aria-label="Unlike message"
-                      onClick={() => handleLike(message._id)}
-                      className="mt-2 text-red-500 text-sm self-start"
-                    >
-                      ❤️
-                    </button>
+                  {likes.length > 0 && (
+                    <span className="text-xs text-red-400 mt-1">
+                      ❤️ {likes.length}
+                    </span>
                   )}
 
                   <div className="hidden group-hover:block absolute top-0 right-0">
