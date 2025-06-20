@@ -77,7 +77,7 @@ export const toggleLike = async (req, res) => {
     await message.save();
 
     // Re-populate likes with names
-    await message.populate("likes", "name");
+    message = await Message.findById(id).populate("likes", "name");
 
     const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
     const senderSocketId = getReceiverSocketId(message.senderId.toString());

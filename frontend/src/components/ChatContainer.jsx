@@ -258,6 +258,8 @@ const ChatContainer = () => {
                       )}
                     </>
                   )}
+                  {console.log("🔥 Likes for message:", message.likes)}
+
 
 {likes.length > 0 && (
   <div
