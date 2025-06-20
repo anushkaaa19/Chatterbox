@@ -59,36 +59,36 @@ export const toggleLike = async (req, res) => {
   const userId = req.user._id.toString();
 
   try {
-    let message = await Message.findById(id).populate("likes", "name");
+    const message = await Message.findById(id);
 
     if (!message)
       return res.status(404).json({ success: false, message: "Message not found" });
 
-    const likesSet = new Set(message.likes.map(u => u._id.toString()));
-    
+    const likesSet = new Set((message.likes || []).map(u => u.toString()));
+
     if (likesSet.has(userId)) {
       likesSet.delete(userId);
     } else {
       likesSet.add(userId);
     }
 
-    // Save updated likes (as ObjectId array)
-    message.likes = Array.from(likesSet);
-    await message.save();
+    // ✅ Update and re-fetch populated message
+    const updatedMessage = await Message.findByIdAndUpdate(
+      id,
+      { likes: Array.from(likesSet) },
+      { new: true }
+    ).populate("likes", "fullName");
 
-    // Re-populate likes with names
-    message = await Message.findById(id).populate("likes", "fullName");
-
-    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-    const senderSocketId = getReceiverSocketId(message.senderId.toString());
+    const receiverSocketId = getReceiverSocketId(updatedMessage.receiverId.toString());
+    const senderSocketId = getReceiverSocketId(updatedMessage.senderId.toString());
 
     if (receiverSocketId)
-      io.to(receiverSocketId).emit("messageLiked", { message });
+      io.to(receiverSocketId).emit("messageLiked", { message: updatedMessage });
 
     if (senderSocketId && senderSocketId !== receiverSocketId)
-      io.to(senderSocketId).emit("messageLiked", { message });
+      io.to(senderSocketId).emit("messageLiked", { message: updatedMessage });
 
-    res.status(200).json({ success: true, message });
+    res.status(200).json({ success: true, message: updatedMessage });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
