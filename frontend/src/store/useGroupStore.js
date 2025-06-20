@@ -26,7 +26,8 @@ export const useGroupStore = create((set, get) => ({
         );
 
         const updatedSelectedGroup =
-          state.selectedGroup?._id === group._id ? { ...group } : state.selectedGroup;
+        state.selectedGroup?._id === group._id ? group : state.selectedGroup;
+      
 
         return {
           groups: updatedGroups,
