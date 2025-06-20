@@ -9,11 +9,14 @@ const GroupChatHeader = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
 
   // Fallback avatar URL
   const fallbackAvatar = "/avatar.png"; // make sure this file exists in public/
   useEffect(() => {
-    console.log("🔁 Group header refreshed. Members:", group?.members?.map((m) => m.fullName));
+    // force re-render on group._refresh
+    setRefreshKey((prev) => prev + 1);
   }, [group?._refresh]);
   
   

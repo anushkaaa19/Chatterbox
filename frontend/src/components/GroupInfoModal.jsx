@@ -2,10 +2,11 @@ import { useGroupStore } from "../store/useGroupStore";
 
 const GroupInfoModal = ({ isOpen, onClose }) => {
   const group = useGroupStore((state) => state.selectedGroup);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
-    console.log("🔁 Group info modal refreshed. Members:", group?.members?.map((m) => m.fullName));
+    if (group?._refresh) setRefreshKey((k) => k + 1);
   }, [group?._refresh]);
-  
 
   if (!isOpen || !group) return null;
 
@@ -28,8 +29,7 @@ const GroupInfoModal = ({ isOpen, onClose }) => {
 
           <div className="divider">Members</div>
 
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {group.members?.map((member) => (
+          <div key={refreshKey} className="space-y-2 max-h-60 overflow-y-auto">            {group.members?.map((member) => (
               <div
                 key={member?._id}
                 className="flex items-center gap-2 p-2 hover:bg-base-200 rounded"

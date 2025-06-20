@@ -186,6 +186,7 @@ export const leaveGroup = async (req, res) => {
       .populate("members", "fullName email profilePic")
       .populate("admin", "fullName email profilePic")
       .lean(); // <-- optional: improves performance and ensures plain object
+      console.log("📢 groupUpdated emitted:", updatedGroup.members.map(m => m.fullName));
 
     // ✅ Broadcast to all members still in the group
     if (updatedGroup) {
