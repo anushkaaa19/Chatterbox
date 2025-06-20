@@ -56,23 +56,29 @@ export const editMessage = async (req, res) => {
 // ✅ Toggle like/unlike
 export const toggleLike = async (req, res) => {
   const { id } = req.params;
-  const userId = req.user._id;
+  const userId = req.user._id.toString();
 
   try {
-    const message = await Message.findById(id);
+    let message = await Message.findById(id).populate("likes", "name");
+
     if (!message)
       return res.status(404).json({ success: false, message: "Message not found" });
 
-    const index = message.likes.indexOf(userId);
-    if (index === -1) {
-      message.likes.push(userId);
+    const likesSet = new Set(message.likes.map(u => u._id.toString()));
+    
+    if (likesSet.has(userId)) {
+      likesSet.delete(userId);
     } else {
-      message.likes.splice(index, 1);
+      likesSet.add(userId);
     }
 
+    // Save updated likes (as ObjectId array)
+    message.likes = Array.from(likesSet);
     await message.save();
 
-    // 🔥 Broadcast updated message to BOTH users
+    // Re-populate likes with names
+    await message.populate("likes", "name");
+
     const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
     const senderSocketId = getReceiverSocketId(message.senderId.toString());
 

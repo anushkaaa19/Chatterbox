@@ -260,17 +260,21 @@ const ChatContainer = () => {
                   )}
 
 {likes.length > 0 && (
-  <span className="text-xs text-red-400 mt-1">
-    ❤️ {likes.length}{" "}
-    <span className="tooltip tooltip-top" data-tip={
-      likes.includes(authUser._id)
-        ? `Liked by you${likes.length > 1 ? " and others" : ""}`
-        : `Liked by ${likes.length} user${likes.length > 1 ? "s" : ""}`
-    }>
-      💬
-    </span>
-  </span>
+  <div
+    className="text-xs text-red-400 mt-1 tooltip"
+    data-tip={
+      likes
+        .map((user) => {
+          if (typeof user === "string") return "Unknown";
+          return user._id === authUser._id ? "You" : user.name;
+        })
+        .join(", ")
+    }
+  >
+    ❤️ {likes.length}
+  </div>
 )}
+
 
 
                   <div className="hidden group-hover:block absolute top-0 right-0">
