@@ -95,8 +95,10 @@ const ChatContainer = () => {
 
     const handleEdit = ({ message }) => updateMessage(message);
     const handleLike = ({ message }) => {
+      console.log("🔥 messageLiked received:", message);
       useChatStore.getState().updateMessage(message);
     };
+    
     
     socket.on("messageEdited", handleEdit);
     socket.on("messageLiked", handleLike);
@@ -257,11 +259,19 @@ const ChatContainer = () => {
                     </>
                   )}
 
-                  {likes.length > 0 && (
-                    <span className="text-xs text-red-400 mt-1">
-                      ❤️ {likes.length}
-                    </span>
-                  )}
+{likes.length > 0 && (
+  <span className="text-xs text-red-400 mt-1">
+    ❤️ {likes.length}{" "}
+    <span className="tooltip tooltip-top" data-tip={
+      likes.includes(authUser._id)
+        ? `Liked by you${likes.length > 1 ? " and others" : ""}`
+        : `Liked by ${likes.length} user${likes.length > 1 ? "s" : ""}`
+    }>
+      💬
+    </span>
+  </span>
+)}
+
 
                   <div className="hidden group-hover:block absolute top-0 right-0">
                     <MessageOptionsMenu
