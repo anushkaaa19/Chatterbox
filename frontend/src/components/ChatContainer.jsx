@@ -261,22 +261,23 @@ const ChatContainer = () => {
                   {console.log("🔥 Likes for message:", message.likes)}
 
 
-{likes.length > 0 && (
+                  {likes.length > 0 && (
   <div
     className="text-xs text-red-400 mt-1 tooltip"
-    data-tip={
-      likes
-        .map((user) => {
-          if (typeof user === "string") return "Unknown";
-          return user._id === authUser._id ? "You" : user.fullName
-          ;
-        })
-        .join(", ")
-    }
+    data-tip={(() => {
+      const names = likes.map((user) => {
+        if (typeof user === "string") return "Unknown";
+        if (!user || !user._id) return "Unknown";
+        return user._id === authUser._id ? "You" : user.fullName || "Unknown";
+      }).join(", ");
+      console.log("🧪 Tooltip for message", message._id, "→", names);
+      return names;
+    })()}
   >
     ❤️ {likes.length}
   </div>
 )}
+
 
 
 
