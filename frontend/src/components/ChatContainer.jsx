@@ -268,7 +268,8 @@ const ChatContainer = () => {
       likes
         .map((user) => {
           if (typeof user === "string") return "Unknown";
-          return user._id === authUser._id ? "You" : user.name;
+          return user._id === authUser._id ? "You" : user.fullName
+          ;
         })
         .join(", ")
     }
