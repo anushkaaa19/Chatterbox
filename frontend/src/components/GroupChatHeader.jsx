@@ -1,14 +1,22 @@
 import React, { useState } from "react";
 import EditGroupModal from "./EditGroupModal";
+import { useGroupStore } from "../store/useGroupStore";
+
 import GroupInfoModal from "./GroupInfoModal";
 
-const GroupChatHeader = ({ group }) => {
+const GroupChatHeader = () => {
+  const group = useGroupStore((state) => state.selectedGroup); // ⬅️ use Zustand state directly
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   // Fallback avatar URL
   const fallbackAvatar = "/avatar.png"; // make sure this file exists in public/
-
+  useEffect(() => {
+    console.log("🔁 Group header refreshed. Members:", group?.members?.map((m) => m.fullName));
+  }, [group?._refresh]);
+  
+  
   return (
     <>
       <div className="p-4 bg-base-200 border-b border-base-300 flex items-center gap-4 shadow-sm">

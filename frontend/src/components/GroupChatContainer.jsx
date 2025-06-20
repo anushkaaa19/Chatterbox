@@ -84,7 +84,7 @@ const GroupChatContainer = () => {
 
   return (
     <div className="flex flex-col flex-1 h-full bg-base-100">
-      <GroupChatHeader group={selectedGroup} />
+      <GroupChatHeader/>
 
       <div className="px-4 py-2 bg-base-200 border-b border-base-300">
         <input

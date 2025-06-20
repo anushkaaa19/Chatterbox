@@ -2,6 +2,10 @@ import { useGroupStore } from "../store/useGroupStore";
 
 const GroupInfoModal = ({ isOpen, onClose }) => {
   const group = useGroupStore((state) => state.selectedGroup);
+  useEffect(() => {
+    console.log("🔁 Group info modal refreshed. Members:", group?.members?.map((m) => m.fullName));
+  }, [group?._refresh]);
+  
 
   if (!isOpen || !group) return null;
 

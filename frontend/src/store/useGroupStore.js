@@ -24,17 +24,19 @@ export const useGroupStore = create((set, get) => ({
         const updatedGroups = state.groups.map((g) =>
           g._id === group._id ? group : g
         );
-
+    
         const updatedSelectedGroup =
-        state.selectedGroup?._id === group._id ? group : state.selectedGroup;
-      
-
+          state.selectedGroup?._id === group._id
+            ? { ...group, _refresh: Date.now() } // 🔥 force update
+            : state.selectedGroup;
+    
         return {
           groups: updatedGroups,
           selectedGroup: updatedSelectedGroup,
         };
       });
     };
+    
 
     socket.on("groupUpdated", groupUpdateHandler);
   },
