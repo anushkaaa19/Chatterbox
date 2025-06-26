@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import EditGroupModal from "./EditGroupModal";
 import { useGroupStore } from "../store/useGroupStore";
+import {useEffect} from "react";
 
 import GroupInfoModal from "./GroupInfoModal";
 
