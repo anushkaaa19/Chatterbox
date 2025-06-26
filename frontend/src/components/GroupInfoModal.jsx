@@ -1,4 +1,5 @@
 import { useGroupStore } from "../store/useGroupStore";
+import { useState,useEffect } from "react";
 
 const GroupInfoModal = ({ isOpen, onClose }) => {
   const group = useGroupStore((state) => state.selectedGroup);
