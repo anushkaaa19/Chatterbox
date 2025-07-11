@@ -55,6 +55,8 @@ app.use(cors({
     origin: "https://chatterbox-frontend-uppi.onrender.com",
     credentials: true,
 }));
+app.options('*', cors()); // ✅ Handles preflight requests
+
 
 // Add this right after your middleware setup
 app.use((req, res, next) => {
